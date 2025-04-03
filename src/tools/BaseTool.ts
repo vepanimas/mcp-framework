@@ -38,6 +38,7 @@ export interface ToolProtocol extends SDKTool {
     inputSchema: {
       type: "object";
       properties?: Record<string, unknown>;
+      required?: string[];
     };
   };
   toolCall(request: {
@@ -53,19 +54,34 @@ export abstract class MCPTool<TInput extends Record<string, any> = {}>
   protected abstract schema: ToolInputSchema<TInput>;
   [key: string]: unknown;
 
-  get inputSchema(): { type: "object"; properties?: Record<string, unknown> } {
-    return {
-      type: "object" as const,
-      properties: Object.fromEntries(
-        Object.entries(this.schema).map(([key, schema]) => [
-          key,
-          {
-            type: this.getJsonSchemaType(schema.type),
-            description: schema.description,
-          },
-        ])
-      ),
+  get inputSchema(): { type: "object"; properties?: Record<string, unknown>; required?: string[] } {
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+
+    Object.entries(this.schema).forEach(([key, schema]) => {
+      // Determine the correct JSON schema type (unwrapping optional if necessary)
+      const jsonType = this.getJsonSchemaType(schema.type);
+      properties[key] = {
+        type: jsonType,
+        description: schema.description,
+      };
+
+      // If the field is not an optional, add it to the required array.
+      if (!(schema.type instanceof z.ZodOptional)) {
+        required.push(key);
+      }
+    });
+
+    const inputSchema: { type: "object"; properties: Record<string, unknown>; required?: string[] } = {
+      type: "object",
+      properties,
     };
+
+    if (required.length > 0) {
+      inputSchema.required = required;
+    }
+
+    return inputSchema;
   }
 
   get toolDefinition() {
@@ -102,11 +118,17 @@ export abstract class MCPTool<TInput extends Record<string, any> = {}>
   }
 
   private getJsonSchemaType(zodType: z.ZodType<any>): string {
-    if (zodType instanceof z.ZodString) return "string";
-    if (zodType instanceof z.ZodNumber) return "number";
-    if (zodType instanceof z.ZodBoolean) return "boolean";
-    if (zodType instanceof z.ZodArray) return "array";
-    if (zodType instanceof z.ZodObject) return "object";
+    // Unwrap optional types to correctly determine the JSON schema type.
+    let currentType = zodType;
+    if (currentType instanceof z.ZodOptional) {
+      currentType = currentType.unwrap();
+    }
+
+    if (currentType instanceof z.ZodString) return "string";
+    if (currentType instanceof z.ZodNumber) return "number";
+    if (currentType instanceof z.ZodBoolean) return "boolean";
+    if (currentType instanceof z.ZodArray) return "array";
+    if (currentType instanceof z.ZodObject) return "object";
     return "string";
   }
 
