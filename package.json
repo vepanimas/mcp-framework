@@ -24,7 +24,8 @@
     "watch": "tsc --watch",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepare": "npm run build"
   },
   "engines": {
     "node": ">=18.19.0"
