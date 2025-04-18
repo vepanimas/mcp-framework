@@ -127,7 +127,7 @@ export abstract class MCPTool<TInput extends Record<string, any> = {}>
     }
 
     return {
-      content: [{ type: "text", text: data.toString() }],
+      content: [{ type: "text", text: String(data) }],
     };
   }
 
