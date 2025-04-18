@@ -51,6 +51,7 @@ export abstract class MCPTool<TInput extends Record<string, any> = {}>
   abstract name: string;
   abstract description: string;
   protected abstract schema: ToolInputSchema<TInput>;
+  protected useStringify: boolean = true;
   [key: string]: unknown;
 
   get inputSchema(): { type: "object"; properties?: Record<string, unknown> } {
@@ -127,7 +128,10 @@ export abstract class MCPTool<TInput extends Record<string, any> = {}>
     }
 
     return {
-      content: [{ type: "text", text: String(data) }],
+      content: [{ 
+        type: "text", 
+        text: this.useStringify ? JSON.stringify(data) : String(data) 
+      }],
     };
   }
 
