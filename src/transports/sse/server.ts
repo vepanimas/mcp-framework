@@ -119,7 +119,25 @@ export class SSEServerTransport extends AbstractTransport {
         if (!isAuthenticated) return
       }
 
-      // Remove check for existing single _sseResponse
+      // Check if a sessionId was provided in the request
+      if (sessionId) {
+        // If sessionId exists but is not in our connections map, it's invalid or inactive
+        if (!this._connections.has(sessionId)) {
+          logger.info(`Invalid or inactive session ID in GET request: ${sessionId}. Creating new connection.`);
+          // Continue execution to create a new connection below
+        } else {
+          // If the connection exists and is still active, we could either:
+          // 1. Return an error (409 Conflict) as a client shouldn't create duplicate connections
+          // 2. Close the old connection and create a new one
+          // 3. Keep the old connection and return its details
+          
+          // Option 2: Close old connection and create new one
+          logger.info(`Replacing existing connection for session ID: ${sessionId}`);
+          this.cleanupConnection(sessionId);
+          // Continue execution to create a new connection below
+        }
+      }
+
       // Generate a unique ID for this specific connection
       const connectionId = randomUUID();
       this.setupSSEConnection(res, connectionId);
