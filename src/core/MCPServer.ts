@@ -1,5 +1,4 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { JsonRpcMessage, JsonRpcErrorResponse, JsonRpcId } from "../transports/http/types.js";
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -10,42 +9,28 @@ import {
   ReadResourceRequestSchema,
   SubscribeRequestSchema,
   UnsubscribeRequestSchema,
-  JSONRPCMessage,
-} from "@modelcontextprotocol/sdk/types.js";
-import { ToolProtocol } from "../tools/BaseTool.js";
-import { PromptProtocol } from "../prompts/BasePrompt.js";
-import { ResourceProtocol } from "../resources/BaseResource.js";
-import { readFileSync } from "fs";
-import { join, resolve, dirname } from "path";
-import { logger } from "./Logger.js";
-import { ToolLoader } from "../loaders/toolLoader.js";
-import { PromptLoader } from "../loaders/promptLoader.js";
-import { ResourceLoader } from "../loaders/resourceLoader.js";
-import { BaseTransport } from "../transports/base.js";
-import { StdioServerTransport } from "../transports/stdio/server.js";
-import { SSEServerTransport } from "../transports/sse/server.js";
-import { SSETransportConfig, DEFAULT_SSE_CONFIG } from "../transports/sse/types.js";
-import { HttpStreamTransport } from "../transports/http/server.js";
-import { HttpStreamTransportConfig, DEFAULT_HTTP_STREAM_CONFIG } from "../transports/http/types.js";
-import { DEFAULT_CORS_CONFIG } from "../transports/sse/types.js";
-import { AuthConfig } from "../auth/types.js";
+} from '@modelcontextprotocol/sdk/types.js';
+import { ToolProtocol } from '../tools/BaseTool.js';
+import { PromptProtocol } from '../prompts/BasePrompt.js';
+import { ResourceProtocol } from '../resources/BaseResource.js';
+import { readFileSync } from 'fs';
+import { join, resolve, dirname } from 'path';
+import { logger } from './Logger.js';
+import { ToolLoader } from '../loaders/toolLoader.js';
+import { PromptLoader } from '../loaders/promptLoader.js';
+import { ResourceLoader } from '../loaders/resourceLoader.js';
+import { BaseTransport } from '../transports/base.js';
+import { StdioServerTransport } from '../transports/stdio/server.js';
+import { SSEServerTransport } from '../transports/sse/server.js';
+import { SSETransportConfig, DEFAULT_SSE_CONFIG } from '../transports/sse/types.js';
+import { HttpStreamTransport } from '../transports/http/server.js';
+import { HttpStreamTransportConfig, DEFAULT_HTTP_STREAM_CONFIG } from '../transports/http/types.js';
+import { DEFAULT_CORS_CONFIG } from '../transports/sse/types.js';
+import { AuthConfig } from '../auth/types.js';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-
-function isRequest(msg: any): boolean {
-  return msg && typeof msg.method === 'string' && msg.jsonrpc === "2.0" && 'id' in msg;
-}
-
-function isResponse(msg: any): boolean {
-  return msg && msg.jsonrpc === "2.0" && 'id' in msg && ('result' in msg || 'error' in msg);
-}
-
-function isNotification(msg: any): boolean {
-  return msg && typeof msg.method === 'string' && msg.jsonrpc === "2.0" && !('id' in msg);
-}
-
-export type TransportType = "stdio" | "sse" | "http-stream";
+export type TransportType = 'stdio' | 'sse' | 'http-stream';
 
 export interface TransportConfig {
   type: TransportType;
@@ -69,9 +54,8 @@ export type ServerCapabilities = {
   };
   resources?: {
     listChanged?: true; // Optional: Indicates support for list change notifications
-    subscribe?: true;   // Optional: Indicates support for resource subscriptions
+    subscribe?: true; // Optional: Indicates support for resource subscriptions
   };
-  // Other standard capabilities like 'logging' or 'completion' could be added here if supported
 };
 
 export class MCPServer {
@@ -86,7 +70,7 @@ export class MCPServer {
   private serverVersion: string;
   private basePath: string;
   private transportConfig: TransportConfig;
-  private capabilities: ServerCapabilities = {}; // Initialize as empty
+  private capabilities: ServerCapabilities = {};
   private isRunning: boolean = false;
   private transport?: BaseTransport;
   private shutdownPromise?: Promise<void>;
@@ -96,17 +80,15 @@ export class MCPServer {
     this.basePath = this.resolveBasePath(config.basePath);
     this.serverName = config.name ?? this.getDefaultName();
     this.serverVersion = config.version ?? this.getDefaultVersion();
-    this.transportConfig = config.transport ?? { type: "stdio" };
-    
+    this.transportConfig = config.transport ?? { type: 'stdio' };
+
     if (this.transportConfig.auth && this.transportConfig.options) {
-        (this.transportConfig.options as any).auth = this.transportConfig.auth;
+      (this.transportConfig.options as any).auth = this.transportConfig.auth;
     } else if (this.transportConfig.auth && !this.transportConfig.options) {
-        this.transportConfig.options = { auth: this.transportConfig.auth } as any;
+      this.transportConfig.options = { auth: this.transportConfig.auth } as any;
     }
 
-    logger.info(
-      `Initializing MCP Server: ${this.serverName}@${this.serverVersion}`
-    );
+    logger.info(`Initializing MCP Server: ${this.serverName}@${this.serverVersion}`);
     logger.debug(`Base path: ${this.basePath}`);
     logger.debug(`Transport config: ${JSON.stringify(this.transportConfig)}`);
 
@@ -133,47 +115,39 @@ export class MCPServer {
 
   private createTransport(): BaseTransport {
     logger.debug(`Creating transport: ${this.transportConfig.type}`);
-    
+
     let transport: BaseTransport;
     const options = this.transportConfig.options || {};
     const authConfig = this.transportConfig.auth ?? (options as any).auth;
-    
+
     switch (this.transportConfig.type) {
-      case "sse": {
+      case 'sse': {
         const sseConfig: SSETransportConfig = {
-          ...DEFAULT_SSE_CONFIG, 
+          ...DEFAULT_SSE_CONFIG,
           ...(options as SSETransportConfig),
-          cors: { ...DEFAULT_CORS_CONFIG, ...(options as SSETransportConfig).cors }, 
-          auth: authConfig
+          cors: { ...DEFAULT_CORS_CONFIG, ...(options as SSETransportConfig).cors },
+          auth: authConfig,
         };
         transport = new SSEServerTransport(sseConfig);
         break;
       }
-      case "http-stream": {
+      case 'http-stream': {
         const httpConfig: HttpStreamTransportConfig = {
-          ...DEFAULT_HTTP_STREAM_CONFIG, 
+          ...DEFAULT_HTTP_STREAM_CONFIG,
           ...(options as HttpStreamTransportConfig),
-          cors: { 
-            ...DEFAULT_CORS_CONFIG, 
-            ...((options as HttpStreamTransportConfig).cors || {})
+          cors: {
+            ...DEFAULT_CORS_CONFIG,
+            ...((options as HttpStreamTransportConfig).cors || {}),
           },
-          session: { 
-            ...DEFAULT_HTTP_STREAM_CONFIG.session, 
-            ...((options as HttpStreamTransportConfig).session || {})
-          },
-          resumability: { 
-            ...DEFAULT_HTTP_STREAM_CONFIG.resumability, 
-            ...((options as HttpStreamTransportConfig).resumability || {})
-          },
-          auth: authConfig
+          auth: authConfig,
         };
-        logger.debug(`Creating HttpStreamTransport with effective responseMode: ${httpConfig.responseMode}`);
+        logger.debug(`Creating HttpStreamTransport. response mode: ${httpConfig.responseMode}`);
         transport = new HttpStreamTransport(httpConfig);
         break;
       }
-      case "stdio":
+      case 'stdio':
       default:
-        if (this.transportConfig.type !== "stdio") {
+        if (this.transportConfig.type !== 'stdio') {
           logger.warn(`Unsupported type '${this.transportConfig.type}', defaulting to stdio.`);
         }
         transport = new StdioServerTransport();
@@ -183,7 +157,7 @@ export class MCPServer {
     transport.onclose = () => {
       logger.info(`Transport (${transport.type}) closed.`);
       if (this.isRunning) {
-        this.stop().catch(error => {
+        this.stop().catch((error) => {
           logger.error(`Shutdown error after transport close: ${error}`);
           process.exit(1);
         });
@@ -199,10 +173,10 @@ export class MCPServer {
   private readPackageJson(): any {
     try {
       const projectRoot = process.cwd();
-      const packagePath = join(projectRoot, "package.json");
-      
+      const packagePath = join(projectRoot, 'package.json');
+
       try {
-        const packageContent = readFileSync(packagePath, "utf-8");
+        const packageContent = readFileSync(packagePath, 'utf-8');
         const packageJson = JSON.parse(packageContent);
         logger.debug(`Successfully read package.json from project root: ${packagePath}`);
         return packageJson;
@@ -222,7 +196,7 @@ export class MCPServer {
       return packageJson.name;
     }
     logger.error("Couldn't find project name in package json");
-    return "unnamed-mcp-server";
+    return 'unnamed-mcp-server';
   }
 
   private getDefaultVersion(): string {
@@ -230,7 +204,7 @@ export class MCPServer {
     if (packageJson?.version) {
       return packageJson.version;
     }
-    return "0.0.0";
+    return '0.0.0';
   }
 
   private setupHandlers() {
@@ -238,16 +212,14 @@ export class MCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async (request: any) => {
       logger.debug(`Received ListTools request: ${JSON.stringify(request)}`);
 
-      const tools = Array.from(this.toolsMap.values()).map(
-        (tool) => tool.toolDefinition
-      );
+      const tools = Array.from(this.toolsMap.values()).map((tool) => tool.toolDefinition);
 
       logger.debug(`Found ${tools.length} tools to return`);
       logger.debug(`Tool definitions: ${JSON.stringify(tools)}`);
 
       const response = {
         tools: tools,
-        nextCursor: undefined
+        nextCursor: undefined,
       };
 
       logger.debug(`Sending ListTools response: ${JSON.stringify(response)}`);
@@ -262,7 +234,7 @@ export class MCPServer {
       const tool = this.toolsMap.get(request.params.name);
       if (!tool) {
         const availableTools = Array.from(this.toolsMap.keys());
-        const errorMsg = `Unknown tool: ${request.params.name}. Available tools: ${availableTools.join(", ")}`;
+        const errorMsg = `Unknown tool: ${request.params.name}. Available tools: ${availableTools.join(', ')}`;
         logger.error(errorMsg);
         throw new Error(errorMsg);
       }
@@ -271,7 +243,7 @@ export class MCPServer {
         logger.debug(`Executing tool: ${tool.name}`);
         const toolRequest = {
           params: request.params,
-          method: "tools/call" as const,
+          method: 'tools/call' as const,
         };
 
         const result = await tool.toolCall(toolRequest);
@@ -285,12 +257,9 @@ export class MCPServer {
     });
 
     if (this.capabilities.prompts) {
-      // No request parameter for ListPrompts
       this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
         return {
-          prompts: Array.from(this.promptsMap.values()).map(
-            (prompt) => prompt.promptDefinition
-          ),
+          prompts: Array.from(this.promptsMap.values()).map((prompt) => prompt.promptDefinition),
         };
       });
 
@@ -299,11 +268,9 @@ export class MCPServer {
         const prompt = this.promptsMap.get(request.params.name);
         if (!prompt) {
           throw new Error(
-            `Unknown prompt: ${
-              request.params.name
-            }. Available prompts: ${Array.from(this.promptsMap.keys()).join(
-              ", "
-            )}`
+            `Unknown prompt: ${request.params.name}. Available prompts: ${Array.from(
+              this.promptsMap.keys()
+            ).join(', ')}`
           );
         }
 
@@ -323,37 +290,30 @@ export class MCPServer {
       });
 
       // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-      this.server.setRequestHandler(
-        ReadResourceRequestSchema,
-        async (request: any) => {
-          const resource = this.resourcesMap.get(request.params.uri);
-          if (!resource) {
-            throw new Error(
-              `Unknown resource: ${
-                request.params.uri
-              }. Available resources: ${Array.from(this.resourcesMap.keys()).join(
-                ", "
-              )}`
-            );
-          }
-
-          return {
-            contents: await resource.read(),
-          };
+      this.server.setRequestHandler(ReadResourceRequestSchema, async (request: any) => {
+        const resource = this.resourcesMap.get(request.params.uri);
+        if (!resource) {
+          throw new Error(
+            `Unknown resource: ${request.params.uri}. Available resources: ${Array.from(
+              this.resourcesMap.keys()
+            ).join(', ')}`
+          );
         }
-      );
+
+        return {
+          contents: await resource.read(),
+        };
+      });
 
       this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
         logger.debug(`Received ListResourceTemplates request`);
-        // For now, return an empty list as requested
         const response = {
           resourceTemplates: [],
-          nextCursor: undefined
+          nextCursor: undefined,
         };
         logger.debug(`Sending ListResourceTemplates response: ${JSON.stringify(response)}`);
         return response;
       });
-
 
       // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
       this.server.setRequestHandler(SubscribeRequestSchema, async (request: any) => {
@@ -363,9 +323,7 @@ export class MCPServer {
         }
 
         if (!resource.subscribe) {
-          throw new Error(
-            `Resource ${request.params.uri} does not support subscriptions`
-          );
+          throw new Error(`Resource ${request.params.uri} does not support subscriptions`);
         }
 
         await resource.subscribe();
@@ -380,9 +338,7 @@ export class MCPServer {
         }
 
         if (!resource.unsubscribe) {
-          throw new Error(
-            `Resource ${request.params.uri} does not support subscriptions`
-          );
+          throw new Error(`Resource ${request.params.uri} does not support subscriptions`);
         }
 
         await resource.unsubscribe();
@@ -394,34 +350,34 @@ export class MCPServer {
   private async detectCapabilities(): Promise<ServerCapabilities> {
     if (await this.toolLoader.hasTools()) {
       this.capabilities.tools = {};
-      logger.debug("Tools capability enabled");
+      logger.debug('Tools capability enabled');
     }
 
     if (await this.promptLoader.hasPrompts()) {
       this.capabilities.prompts = {};
-      logger.debug("Prompts capability enabled");
+      logger.debug('Prompts capability enabled');
     }
 
     if (await this.resourceLoader.hasResources()) {
       this.capabilities.resources = {};
-      logger.debug("Resources capability enabled");
+      logger.debug('Resources capability enabled');
     }
 
     (this.server as any).updateCapabilities?.(this.capabilities);
     logger.debug(`Capabilities updated: ${JSON.stringify(this.capabilities)}`);
-    
+
     return this.capabilities;
   }
 
   private getSdkVersion(): string {
     try {
-      const sdkSpecificFile = require.resolve("@modelcontextprotocol/sdk/server/index.js");
+      const sdkSpecificFile = require.resolve('@modelcontextprotocol/sdk/server/index.js');
 
       const sdkRootDir = resolve(dirname(sdkSpecificFile), '..', '..', '..');
 
-      const correctPackageJsonPath = join(sdkRootDir, "package.json");
+      const correctPackageJsonPath = join(sdkRootDir, 'package.json');
 
-      const packageContent = readFileSync(correctPackageJsonPath, "utf-8");
+      const packageContent = readFileSync(correctPackageJsonPath, 'utf-8');
 
       const packageJson = JSON.parse(packageContent);
 
@@ -429,36 +385,32 @@ export class MCPServer {
         logger.debug(`Found SDK version: ${packageJson.version}`);
         return packageJson.version;
       } else {
-        logger.warn("Could not determine SDK version from its package.json.");
-        return "unknown";
+        logger.warn('Could not determine SDK version from its package.json.');
+        return 'unknown';
       }
     } catch (error: any) {
       logger.warn(`Failed to read SDK package.json: ${error.message}`);
-      return "unknown";
+      return 'unknown';
     }
   }
 
   async start() {
     try {
       if (this.isRunning) {
-        throw new Error("Server is already running");
+        throw new Error('Server is already running');
       }
       this.isRunning = true;
 
       const frameworkPackageJson = require('../../package.json');
       const frameworkVersion = frameworkPackageJson.version || 'unknown';
       const sdkVersion = this.getSdkVersion();
-      logger.info(`Starting MCP server (Framework: ${frameworkVersion}, SDK: ${sdkVersion})...`);
+      logger.info(`Starting MCP server: (Framework: ${frameworkVersion}, SDK: ${sdkVersion})...`);
 
       const tools = await this.toolLoader.loadTools();
-      this.toolsMap = new Map(
-        tools.map((tool: ToolProtocol) => [tool.name, tool])
-      );
+      this.toolsMap = new Map(tools.map((tool: ToolProtocol) => [tool.name, tool]));
 
       const prompts = await this.promptLoader.loadPrompts();
-      this.promptsMap = new Map(
-        prompts.map((prompt: PromptProtocol) => [prompt.name, prompt])
-      );
+      this.promptsMap = new Map(prompts.map((prompt: PromptProtocol) => [prompt.name, prompt]));
 
       const resources = await this.resourceLoader.loadResources();
       this.resourcesMap = new Map(
@@ -467,22 +419,28 @@ export class MCPServer {
 
       await this.detectCapabilities();
       logger.info(`Capabilities detected: ${JSON.stringify(this.capabilities)}`);
-      
+
       this.setupHandlers();
 
       this.transport = this.createTransport();
-      
+
       logger.info(`Connecting transport (${this.transport.type}) to SDK Server...`);
       await this.server.connect(this.transport);
 
-      logger.info(`Started ${this.serverName}@${this.serverVersion} successfully on transport ${this.transport.type}`);
-      
-      logger.info(`Tools (${tools.length}): ${tools.map(t => t.name).join(', ') || 'None'}`);
+      logger.info(
+        `Started ${this.serverName}@${this.serverVersion} successfully on transport ${this.transport.type}`
+      );
+
+      logger.info(`Tools (${tools.length}): ${tools.map((t) => t.name).join(', ') || 'None'}`);
       if (this.capabilities.prompts) {
-        logger.info(`Prompts (${prompts.length}): ${prompts.map(p => p.name).join(', ') || 'None'}`);
+        logger.info(
+          `Prompts (${prompts.length}): ${prompts.map((p) => p.name).join(', ') || 'None'}`
+        );
       }
       if (this.capabilities.resources) {
-        logger.info(`Resources (${resources.length}): ${resources.map(r => r.uri).join(', ') || 'None'}`);
+        logger.info(
+          `Resources (${resources.length}): ${resources.map((r) => r.uri).join(', ') || 'None'}`
+        );
       }
 
       const shutdownHandler = async (signal: string) => {
@@ -495,7 +453,7 @@ export class MCPServer {
           process.exit(1);
         }
       };
-      
+
       process.on('SIGINT', () => shutdownHandler('SIGINT'));
       process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
 
@@ -503,9 +461,8 @@ export class MCPServer {
         this.shutdownResolve = resolve;
       });
 
-      logger.info("Server running and ready.");
+      logger.info('Server running and ready.');
       await this.shutdownPromise;
-
     } catch (error: any) {
       logger.error(`Server failed to start: ${error.message}\n${error.stack}`);
       this.isRunning = false;
@@ -515,16 +472,16 @@ export class MCPServer {
 
   async stop() {
     if (!this.isRunning) {
-      logger.debug("Stop called, but server not running.");
+      logger.debug('Stop called, but server not running.');
       return;
     }
 
     try {
-      logger.info("Stopping server...");
-      
+      logger.info('Stopping server...');
+
       let transportError: Error | null = null;
       let sdkServerError: Error | null = null;
-      
+
       if (this.transport) {
         try {
           logger.debug(`Closing transport (${this.transport.type})...`);
@@ -536,33 +493,35 @@ export class MCPServer {
         }
         this.transport = undefined;
       }
-      
+
       if (this.server) {
         try {
-          logger.debug("Closing SDK Server...");
+          logger.debug('Closing SDK Server...');
           await this.server.close();
-          logger.info("SDK Server closed.");
+          logger.info('SDK Server closed.');
         } catch (e: any) {
           sdkServerError = e;
           logger.error(`Error closing SDK Server: ${e.message}`);
         }
       }
-      
+
       this.isRunning = false;
-      
+
       if (this.shutdownResolve) {
         this.shutdownResolve();
-        logger.debug("Shutdown promise resolved.");
+        logger.debug('Shutdown promise resolved.');
       } else {
-        logger.warn("Shutdown resolve function not found.");
+        logger.warn('Shutdown resolve function not found.');
       }
-      
+
       if (transportError || sdkServerError) {
-        logger.error("Errors occurred during server stop.");
-        throw new Error(`Server stop failed. TransportError: ${transportError?.message}, SDKServerError: ${sdkServerError?.message}`);
+        logger.error('Errors occurred during server stop.');
+        throw new Error(
+          `Server stop failed. TransportError: ${transportError?.message}, SDKServerError: ${sdkServerError?.message}`
+        );
       }
-      
-      logger.info("MCP server stopped successfully.");
+
+      logger.info('MCP server stopped successfully.');
     } catch (error) {
       logger.error(`Error stopping server: ${error}`);
       throw error;

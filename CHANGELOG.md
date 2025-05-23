@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13](https://github.com/QuantGeekDev/mcp-framework/compare/mcp-framework-v0.2.12...mcp-framework-v0.2.13) (2025-05-23)
+
+
+### Bug Fixes
+
+* properly support required/optional tool input schema ([1583603](https://github.com/QuantGeekDev/mcp-framework/commit/1583603b2613b8c7c57ebbd52fb5c8159d0b8d13))
+
+## [0.2.12](https://github.com/QuantGeekDev/mcp-framework/compare/mcp-framework-v0.2.11...mcp-framework-v0.2.12) (2025-05-23)
+
+
+### Features
+
+* bump mcp ts sdk version ([d9cc845](https://github.com/QuantGeekDev/mcp-framework/commit/d9cc8450d39e89f36e39e78bb4d1946cf5f858d3))
+* enhanced cursor rule with example ([d3b54d4](https://github.com/QuantGeekDev/mcp-framework/commit/d3b54d4619e669ad322484b074a82aae27d61ae9))
+* replace custom implementation with sdk delegation ([1b5b8e7](https://github.com/QuantGeekDev/mcp-framework/commit/1b5b8e7cbe354056856a565b21b8908eb93ac2ba))
+
 ## [0.2.11](https://github.com/QuantGeekDev/mcp-framework/compare/mcp-framework-v0.2.10...mcp-framework-v0.2.11) (2025-03-30)
 
 
