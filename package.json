@@ -24,7 +24,8 @@
     "watch": "tsc --watch",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "dev:pub": "rm -rf dist && npm run build && yalc publish --push"
   },
   "engines": {
     "node": ">=18.19.0"
@@ -42,7 +43,7 @@
     "protocol"
   ],
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "1.8"
+    "@modelcontextprotocol/sdk": "^1.11.0"
   },
   "dependencies": {
     "@types/prompts": "^2.4.9",
