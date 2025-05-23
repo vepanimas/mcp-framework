@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13](https://github.com/QuantGeekDev/mcp-framework/compare/mcp-framework-v0.2.12...mcp-framework-v0.2.13) (2025-05-23)
+
+
+### Bug Fixes
+
+* properly support required/optional tool input schema ([1583603](https://github.com/QuantGeekDev/mcp-framework/commit/1583603b2613b8c7c57ebbd52fb5c8159d0b8d13))
+
 ## [0.2.12](https://github.com/QuantGeekDev/mcp-framework/compare/mcp-framework-v0.2.11...mcp-framework-v0.2.12) (2025-05-23)
 
 
