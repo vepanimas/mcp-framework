@@ -29,3 +29,86 @@ Servers offer any of the following features to clients:
 Resources: Context and data, for the user or the AI model to use
 Prompts: Templated messages and workflows for users
 Tools: Functions for the AI model to execute</specification>
+
+Here is an example of how a user creats an mcp server using mcp-framework as the library: <example>## src/tools/ExampleTool.ts
+
+```ts
+import { MCPTool } from "mcp-framework";
+import { z } from "zod";
+
+interface ExampleInput {
+  message: string;
+}
+
+class ExampleTool extends MCPTool<ExampleInput> {
+  name = "example_tool";
+  description = "An example tool that processes messages";
+
+  schema = {
+    message: {
+      type: z.string(),
+      description: "Message to process",
+    },
+  };
+
+  async execute(input: ExampleInput) {
+    return `Processed: ${input.message}`;
+  }
+}
+
+export default ExampleTool;
+```
+
+## src/index.ts
+
+```ts
+import { MCPServer } from "mcp-framework";
+
+const server = new MCPServer({transport:{
+  type:"http-stream",
+  options:{
+    port:1337,
+    cors: {
+      allowOrigin:"*"
+    }
+  }
+}});
+
+server.start();
+
+```
+
+## package.json
+
+```json
+{
+  "name": "http2-hi",
+  "version": "0.0.1",
+  "description": "http2-hi MCP server",
+  "type": "module",
+  "bin": {
+    "http2-hi": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && mcp-build",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "mcp-framework": "^0.2.12-beta.4",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  }
+}
+
+```
+</example>
