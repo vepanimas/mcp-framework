@@ -23,6 +23,11 @@ A crypto tipping service that enables AI assistants to help users send cryptocur
  - Preparing cryptocurrency tips for users/agents to complete
 Setup instructions for various clients (Cursor, Sage, Claude Desktop) are available in their [MCP Server documentation](https://docs.tip.md/mcp-server/).
 
+## Support our work
+
+[![Tip in Crypto](https://tip.md/badge.svg)](https://tip.md/QuantGeekDev)
+
+
 # [Read the full docs here](https://mcp-framework.com)
 
 
@@ -426,9 +431,6 @@ class CustomAuthProvider implements AuthProvider {
   }
 }
 ```
-## Support our work
-
-[![Tip in Crypto](https://tip.md/badge.svg)](https://tip.md/tipdotmd)
 
 ## License
 
