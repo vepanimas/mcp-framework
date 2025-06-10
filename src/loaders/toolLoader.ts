@@ -1,58 +1,43 @@
-import { ToolProtocol } from "../tools/BaseTool.js";
-import { join, dirname } from "path";
-import { promises as fs } from "fs";
-import { logger } from "../core/Logger.js";
+import { ToolProtocol } from '../tools/BaseTool.js';
+import { join, dirname } from 'path';
+import { promises as fs } from 'fs';
+import { logger } from '../core/Logger.js';
+import { discoverFilesRecursively, hasValidFiles } from '../utils/fileDiscovery.js';
 
 export class ToolLoader {
   private readonly TOOLS_DIR: string;
-  private readonly EXCLUDED_FILES = ["BaseTool.js", "*.test.js", "*.spec.js"];
+  private readonly EXCLUDED_FILES = ['BaseTool.js', '*.test.js', '*.spec.js'];
 
   constructor(basePath?: string) {
-    const mainModulePath = basePath || process.argv[1];
-    this.TOOLS_DIR = join(dirname(mainModulePath), "tools");
+    if (basePath) {
+      // If basePath is provided, it should be the directory containing the tools folder
+      this.TOOLS_DIR = join(basePath, 'tools');
+    } else {
+      // For backwards compatibility, use the old behavior with process.argv[1]
+      const mainModulePath = process.argv[1];
+      this.TOOLS_DIR = join(dirname(mainModulePath), 'tools');
+    }
     logger.debug(`Initialized ToolLoader with directory: ${this.TOOLS_DIR}`);
   }
 
   async hasTools(): Promise<boolean> {
     try {
-      const stats = await fs.stat(this.TOOLS_DIR);
-      if (!stats.isDirectory()) {
-        logger.debug("Tools path exists but is not a directory");
-        return false;
-      }
-
-      const files = await fs.readdir(this.TOOLS_DIR);
-      const hasValidFiles = files.some((file) => this.isToolFile(file));
-      logger.debug(`Tools directory has valid files: ${hasValidFiles}`);
-      return hasValidFiles;
+      return await hasValidFiles(this.TOOLS_DIR, {
+        extensions: ['.js'],
+        excludePatterns: this.EXCLUDED_FILES,
+      });
     } catch (error) {
       logger.debug(`No tools directory found: ${(error as Error).message}`);
       return false;
     }
   }
 
-  private isToolFile(file: string): boolean {
-    if (!file.endsWith(".js")) return false;
-    const isExcluded = this.EXCLUDED_FILES.some((pattern) => {
-      if (pattern.includes("*")) {
-        const regex = new RegExp(pattern.replace("*", ".*"));
-        return regex.test(file);
-      }
-      return file === pattern;
-    });
-
-    logger.debug(
-      `Checking file ${file}: ${isExcluded ? "excluded" : "included"}`
-    );
-    return !isExcluded;
-  }
-
   private validateTool(tool: any): tool is ToolProtocol {
     const isValid = Boolean(
       tool &&
-        typeof tool.name === "string" &&
+        typeof tool.name === 'string' &&
         tool.toolDefinition &&
-        typeof tool.toolCall === "function"
+        typeof tool.toolCall === 'function'
     );
 
     if (isValid) {
@@ -68,38 +53,47 @@ export class ToolLoader {
     try {
       logger.debug(`Attempting to load tools from: ${this.TOOLS_DIR}`);
 
-      let stats;
-      try {
-        stats = await fs.stat(this.TOOLS_DIR);
-      } catch (error) {
-        logger.debug(`No tools directory found: ${(error as Error).message}`);
+      const toolFiles = await discoverFilesRecursively(this.TOOLS_DIR, {
+        extensions: ['.js'],
+        excludePatterns: this.EXCLUDED_FILES,
+      });
+
+      if (toolFiles.length === 0) {
+        logger.debug('No tool files found');
         return [];
       }
 
-      if (!stats.isDirectory()) {
-        logger.error(`Path is not a directory: ${this.TOOLS_DIR}`);
-        return [];
-      }
-
-      const files = await fs.readdir(this.TOOLS_DIR);
-      logger.debug(`Found files in directory: ${files.join(", ")}`);
+      logger.debug(`Found tool files: ${toolFiles.join(', ')}`);
 
       const tools: ToolProtocol[] = [];
 
-      for (const file of files) {
-        if (!this.isToolFile(file)) {
-          continue;
-        }
-
+      for (const file of toolFiles) {
         try {
           const fullPath = join(this.TOOLS_DIR, file);
           logger.debug(`Attempting to load tool from: ${fullPath}`);
 
           const importPath = `file://${fullPath}`;
-          const { default: ToolClass } = await import(importPath);
+          const module = await import(importPath);
+
+          // Handle both CommonJS (module.default) and ES6 (module.default) exports
+          let ToolClass = module.default;
+
+          // If no default export, try the module itself (CommonJS style)
+          if (!ToolClass && typeof module === 'function') {
+            ToolClass = module;
+          }
+
+          // If still no class, try common export patterns
+          if (!ToolClass) {
+            // Try named exports or direct module.exports
+            const keys = Object.keys(module);
+            if (keys.length === 1) {
+              ToolClass = module[keys[0]];
+            }
+          }
 
           if (!ToolClass) {
-            logger.warn(`No default export found in ${file}`);
+            logger.warn(`No valid export found in ${file}`);
             continue;
           }
 
@@ -113,9 +107,7 @@ export class ToolLoader {
       }
 
       logger.debug(
-        `Successfully loaded ${tools.length} tools: ${tools
-          .map((t) => t.name)
-          .join(", ")}`
+        `Successfully loaded ${tools.length} tools: ${tools.map((t) => t.name).join(', ')}`
       );
       return tools;
     } catch (error) {

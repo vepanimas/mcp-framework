@@ -33,7 +33,7 @@ export type InferSchemaType<TSchema> =
       : never;
 
 // Magic type that infers from the schema property of the current class
-export type McpInput<T extends MCPTool<any, any> = MCPTool<any, any>> = InferSchemaType<
+export type MCPInput<T extends MCPTool<any, any> = MCPTool<any, any>> = InferSchemaType<
   T['schema']
 >;
 
