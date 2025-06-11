@@ -112,3 +112,6 @@ server.start();
 
 ```
 </example>
+
+It's important to keep in mind that mcp-framework is used exclusively as a dependency in other repositories - just like express js would be.
+This means that we are running it from node_modules within the repo - this impacts how relative directories work
