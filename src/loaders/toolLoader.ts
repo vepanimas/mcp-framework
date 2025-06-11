@@ -1,6 +1,6 @@
 import { ToolProtocol } from '../tools/BaseTool.js';
 import { join, dirname } from 'path';
-import { promises as fs } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import { logger } from '../core/Logger.js';
 import { discoverFilesRecursively, hasValidFiles } from '../utils/fileDiscovery.js';
 
@@ -9,23 +9,43 @@ export class ToolLoader {
   private readonly EXCLUDED_FILES = ['BaseTool.js', '*.test.js', '*.spec.js'];
 
   constructor(basePath?: string) {
-    if (basePath) {
-      // If basePath is provided, it should be the directory containing the tools folder
+    const projectRoot = process.cwd();
+    const distToolsPath = join(projectRoot, 'dist', 'tools');
+
+    if (existsSync(distToolsPath)) {
+      this.TOOLS_DIR = distToolsPath;
+      logger.debug(`Using project's dist/tools directory: ${this.TOOLS_DIR}`);
+    } else if (basePath) {
       this.TOOLS_DIR = join(basePath, 'tools');
+      logger.debug(`Using provided base path for tools: ${this.TOOLS_DIR}`);
     } else {
-      // For backwards compatibility, use the old behavior with process.argv[1]
+      // For backwards compatibility
       const mainModulePath = process.argv[1];
-      this.TOOLS_DIR = join(dirname(mainModulePath), 'tools');
+      const moduleDir = dirname(mainModulePath);
+
+      if (moduleDir.endsWith('dist')) {
+        this.TOOLS_DIR = join(moduleDir, 'tools');
+      } else {
+        this.TOOLS_DIR = join(moduleDir, 'dist', 'tools');
+      }
+      logger.debug(`Using module path for tools: ${this.TOOLS_DIR}`);
     }
-    logger.debug(`Initialized ToolLoader with directory: ${this.TOOLS_DIR}`);
   }
 
   async hasTools(): Promise<boolean> {
     try {
-      return await hasValidFiles(this.TOOLS_DIR, {
+      const hasDistTools = await hasValidFiles(this.TOOLS_DIR, {
         extensions: ['.js'],
         excludePatterns: this.EXCLUDED_FILES,
       });
+
+      if (hasDistTools) {
+        logger.debug(`Found tools in ${this.TOOLS_DIR}`);
+        return true;
+      }
+
+      logger.debug(`No tools found in ${this.TOOLS_DIR}`);
+      return false;
     } catch (error) {
       logger.debug(`No tools directory found: ${(error as Error).message}`);
       return false;

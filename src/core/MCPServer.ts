@@ -95,12 +95,6 @@ export class MCPServer {
     this.toolLoader = new ToolLoader(this.basePath);
     this.promptLoader = new PromptLoader(this.basePath);
     this.resourceLoader = new ResourceLoader(this.basePath);
-
-    this.server = new Server(
-      { name: this.serverName, version: this.serverVersion },
-      { capabilities: this.capabilities }
-    );
-    logger.debug(`SDK Server instance created.`);
   }
 
   private resolveBasePath(configPath?: string): string {
@@ -363,9 +357,7 @@ export class MCPServer {
       logger.debug('Resources capability enabled');
     }
 
-    (this.server as any).updateCapabilities?.(this.capabilities);
-    logger.debug(`Capabilities updated: ${JSON.stringify(this.capabilities)}`);
-
+    logger.debug(`Capabilities detected: ${JSON.stringify(this.capabilities)}`);
     return this.capabilities;
   }
 
@@ -406,6 +398,7 @@ export class MCPServer {
       const sdkVersion = this.getSdkVersion();
       logger.info(`Starting MCP server: (Framework: ${frameworkVersion}, SDK: ${sdkVersion})...`);
 
+      // Load all tools, prompts, and resources first
       const tools = await this.toolLoader.loadTools();
       this.toolsMap = new Map(tools.map((tool: ToolProtocol) => [tool.name, tool]));
 
@@ -431,6 +424,14 @@ export class MCPServer {
 
       await this.detectCapabilities();
       logger.info(`Capabilities detected: ${JSON.stringify(this.capabilities)}`);
+
+      this.server = new Server(
+        { name: this.serverName, version: this.serverVersion },
+        { capabilities: this.capabilities }
+      );
+      logger.debug(
+        `SDK Server instance created with capabilities: ${JSON.stringify(this.capabilities)}`
+      );
 
       this.setupHandlers();
 
