@@ -1,4 +1,5 @@
 import { join, dirname } from 'path';
+import { pathToFileURL } from 'url';
 import { existsSync } from 'fs';
 import { logger } from '../core/Logger.js';
 import { discoverFilesRecursively, hasValidFiles } from '../utils/fileDiscovery.js';
@@ -85,7 +86,7 @@ export abstract class BaseLoader<T> {
             `Attempting to load ${this.config.subdirectory.slice(0, -1)} from: ${fullPath}`
           );
 
-          const importPath = `file://${fullPath}`;
+          const importPath = pathToFileURL(fullPath).href;
           const module = await import(importPath);
 
           let ItemClass = null;
