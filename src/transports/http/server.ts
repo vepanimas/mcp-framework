@@ -15,9 +15,7 @@ export class HttpStreamTransport extends AbstractTransport {
   private _endpoint: string;
   private _enableJsonResponse: boolean = false;
 
-
   private _transports: Map<string, StreamableHTTPServerTransport> = new Map();
-
 
   private _serverConfig: any;
   private _serverSetupCallback?: (server: McpServer) => Promise<void>;
@@ -53,7 +51,6 @@ export class HttpStreamTransport extends AbstractTransport {
       })}`
     );
   }
-
 
   setServerConfig(serverConfig: any, setupCallback: (server: McpServer) => Promise<void>): void {
     this._serverConfig = serverConfig;
@@ -120,13 +117,30 @@ export class HttpStreamTransport extends AbstractTransport {
         logger.info('Creating new session for initialization request');
 
         if (!this._serverSetupCallback || !this._serverConfig) {
-          logger.error('No server configuration available');
-          this.sendError(
-            res,
-            500,
-            -32603,
-            'Internal server error: No server configuration available'
-          );
+          logger.debug('No server configuration available, using standard transport behavior');
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+            onsessioninitialized: (sessionId: string) => {
+              logger.info(`Session initialized: ${sessionId}`);
+              this._transports.set(sessionId, transport);
+            },
+            enableJsonResponse: this._enableJsonResponse,
+          });
+
+          transport.onclose = () => {
+            if (transport.sessionId) {
+              logger.info(`Transport closed for session: ${transport.sessionId}`);
+              this._transports.delete(transport.sessionId);
+            }
+          };
+
+          transport.onmessage = async (message: JSONRPCMessage) => {
+            if (this._onmessage) {
+              await this._onmessage(message);
+            }
+          };
+
+          await transport.handleRequest(req, res, body);
           return;
         }
 
@@ -135,7 +149,6 @@ export class HttpStreamTransport extends AbstractTransport {
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (sessionId: string) => {
               logger.info(`Session initialized: ${sessionId}`);
-              // Store the transport by session ID
               this._transports.set(sessionId, transport);
             },
             enableJsonResponse: this._enableJsonResponse,

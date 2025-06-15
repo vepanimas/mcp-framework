@@ -137,27 +137,6 @@ export class MCPServer {
         };
         logger.debug(`Creating HttpStreamTransport. response mode: ${httpConfig.responseMode}`);
         transport = new HttpStreamTransport(httpConfig);
-
-        (transport as HttpStreamTransport).setServerConfig(
-          { name: this.serverName, version: this.serverVersion },
-          async (mcpServer) => {
-            for (const [toolName, tool] of this.toolsMap.entries()) {
-              (mcpServer as any).tool(
-                toolName,
-                tool.inputSchema.properties || {},
-                async (params: any) => {
-                  const result = await tool.toolCall({
-                    params: {
-                      name: toolName,
-                      arguments: params,
-                    },
-                  });
-                  return result;
-                }
-              );
-            }
-          }
-        );
         break;
       }
       case 'stdio':
