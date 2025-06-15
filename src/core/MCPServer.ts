@@ -137,6 +137,27 @@ export class MCPServer {
         };
         logger.debug(`Creating HttpStreamTransport. response mode: ${httpConfig.responseMode}`);
         transport = new HttpStreamTransport(httpConfig);
+
+        (transport as HttpStreamTransport).setServerConfig(
+          { name: this.serverName, version: this.serverVersion },
+          async (mcpServer) => {
+            for (const [toolName, tool] of this.toolsMap.entries()) {
+              (mcpServer as any).tool(
+                toolName,
+                tool.inputSchema.properties || {},
+                async (params: any) => {
+                  const result = await tool.toolCall({
+                    params: {
+                      name: toolName,
+                      arguments: params,
+                    },
+                  });
+                  return result;
+                }
+              );
+            }
+          }
+        );
         break;
       }
       case 'stdio':
@@ -162,6 +183,16 @@ export class MCPServer {
       logger.error(`Transport (${transport.type}) error: ${error.message}\n${error.stack}`);
     };
     return transport;
+  }
+
+  private createServerInstance() {
+    const server = new Server(
+      { name: this.serverName, version: this.serverVersion },
+      { capabilities: this.capabilities }
+    );
+
+    this.setupHandlers(server);
+    return server;
   }
 
   private readPackageJson(): any {
@@ -201,9 +232,11 @@ export class MCPServer {
     return '0.0.0';
   }
 
-  private setupHandlers() {
+  private setupHandlers(server?: Server) {
+    const targetServer = server || this.server;
+
     // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-    this.server.setRequestHandler(ListToolsRequestSchema, async (request: any) => {
+    targetServer.setRequestHandler(ListToolsRequestSchema, async (request: any) => {
       logger.debug(`Received ListTools request: ${JSON.stringify(request)}`);
 
       const tools = Array.from(this.toolsMap.values()).map((tool) => tool.toolDefinition);
@@ -221,7 +254,7 @@ export class MCPServer {
     });
 
     // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-    this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+    targetServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       logger.debug(`Tool call request received for: ${request.params.name}`);
       logger.debug(`Tool call arguments: ${JSON.stringify(request.params.arguments)}`);
 
@@ -251,14 +284,14 @@ export class MCPServer {
     });
 
     if (this.capabilities.prompts) {
-      this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
+      targetServer.setRequestHandler(ListPromptsRequestSchema, async () => {
         return {
           prompts: Array.from(this.promptsMap.values()).map((prompt) => prompt.promptDefinition),
         };
       });
 
       // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-      this.server.setRequestHandler(GetPromptRequestSchema, async (request: any) => {
+      targetServer.setRequestHandler(GetPromptRequestSchema, async (request: any) => {
         const prompt = this.promptsMap.get(request.params.name);
         if (!prompt) {
           throw new Error(
@@ -275,7 +308,7 @@ export class MCPServer {
     }
 
     if (this.capabilities.resources) {
-      this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      targetServer.setRequestHandler(ListResourcesRequestSchema, async () => {
         return {
           resources: Array.from(this.resourcesMap.values()).map(
             (resource) => resource.resourceDefinition
@@ -284,7 +317,7 @@ export class MCPServer {
       });
 
       // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-      this.server.setRequestHandler(ReadResourceRequestSchema, async (request: any) => {
+      targetServer.setRequestHandler(ReadResourceRequestSchema, async (request: any) => {
         const resource = this.resourcesMap.get(request.params.uri);
         if (!resource) {
           throw new Error(
@@ -299,7 +332,7 @@ export class MCPServer {
         };
       });
 
-      this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+      targetServer.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
         logger.debug(`Received ListResourceTemplates request`);
         const response = {
           resourceTemplates: [],
@@ -310,7 +343,7 @@ export class MCPServer {
       });
 
       // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-      this.server.setRequestHandler(SubscribeRequestSchema, async (request: any) => {
+      targetServer.setRequestHandler(SubscribeRequestSchema, async (request: any) => {
         const resource = this.resourcesMap.get(request.params.uri);
         if (!resource) {
           throw new Error(`Unknown resource: ${request.params.uri}`);
@@ -325,7 +358,7 @@ export class MCPServer {
       });
 
       // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
-      this.server.setRequestHandler(UnsubscribeRequestSchema, async (request: any) => {
+      targetServer.setRequestHandler(UnsubscribeRequestSchema, async (request: any) => {
         const resource = this.resourcesMap.get(request.params.uri);
         if (!resource) {
           throw new Error(`Unknown resource: ${request.params.uri}`);
