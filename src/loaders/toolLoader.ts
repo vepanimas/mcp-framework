@@ -9,26 +9,28 @@ export class ToolLoader {
   private readonly EXCLUDED_FILES = ['BaseTool.js', '*.test.js', '*.spec.js'];
 
   constructor(basePath?: string) {
-    const projectRoot = process.cwd();
-    const distToolsPath = join(projectRoot, 'dist', 'tools');
-
-    if (existsSync(distToolsPath)) {
-      this.TOOLS_DIR = distToolsPath;
-      logger.debug(`Using project's dist/tools directory: ${this.TOOLS_DIR}`);
-    } else if (basePath) {
+    if (basePath) {
       this.TOOLS_DIR = join(basePath, 'tools');
       logger.debug(`Using provided base path for tools: ${this.TOOLS_DIR}`);
     } else {
-      // For backwards compatibility
-      const mainModulePath = process.argv[1];
-      const moduleDir = dirname(mainModulePath);
+      const projectRoot = process.cwd();
+      const distToolsPath = join(projectRoot, 'dist', 'tools');
 
-      if (moduleDir.endsWith('dist')) {
-        this.TOOLS_DIR = join(moduleDir, 'tools');
+      if (existsSync(distToolsPath)) {
+        this.TOOLS_DIR = distToolsPath;
+        logger.debug(`Using project's dist/tools directory: ${this.TOOLS_DIR}`);
       } else {
-        this.TOOLS_DIR = join(moduleDir, 'dist', 'tools');
+        // For backwards compatibility
+        const mainModulePath = process.argv[1];
+        const moduleDir = dirname(mainModulePath);
+
+        if (moduleDir.endsWith('dist')) {
+          this.TOOLS_DIR = join(moduleDir, 'tools');
+        } else {
+          this.TOOLS_DIR = join(moduleDir, 'dist', 'tools');
+        }
+        logger.debug(`Using module path for tools: ${this.TOOLS_DIR}`);
       }
-      logger.debug(`Using module path for tools: ${this.TOOLS_DIR}`);
     }
   }
 
@@ -95,17 +97,13 @@ export class ToolLoader {
           const importPath = `file://${fullPath}`;
           const module = await import(importPath);
 
-          // Handle both CommonJS (module.default) and ES6 (module.default) exports
           let ToolClass = module.default;
 
-          // If no default export, try the module itself (CommonJS style)
           if (!ToolClass && typeof module === 'function') {
             ToolClass = module;
           }
 
-          // If still no class, try common export patterns
           if (!ToolClass) {
-            // Try named exports or direct module.exports
             const keys = Object.keys(module);
             if (keys.length === 1) {
               ToolClass = module[keys[0]];

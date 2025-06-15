@@ -102,7 +102,7 @@ export class MCPServer {
       return configPath;
     }
     if (process.argv[1]) {
-      return process.argv[1];
+      return dirname(process.argv[1]);
     }
     return process.cwd();
   }
