@@ -94,12 +94,13 @@ export async function createProject(
     };
 
     const gitignore = `node_modules
-    dist
-    .env
-    .DS_Store
-    .idea
-    .vscode
-    `;
+dist
+.env
+logs
+.DS_Store
+.idea
+.vscode
+`;
     let indexTs = '';
 
     if (options?.http) {
