@@ -20,20 +20,12 @@ export class HttpStreamTransport extends AbstractTransport {
   private _serverConfig: any;
   private _serverSetupCallback?: (server: McpServer) => Promise<void>;
 
-  private _pingInterval?: NodeJS.Timeout;
-  private _pingTimeouts: Map<string | number, NodeJS.Timeout> = new Map();
-  private _pingFrequency: number;
-  private _pingTimeout: number;
-
   constructor(config: HttpStreamTransportConfig = {}) {
     super();
 
     this._port = config.port || 8080;
     this._endpoint = config.endpoint || '/mcp';
     this._enableJsonResponse = config.responseMode === 'batch';
-
-    this._pingFrequency = config.ping?.frequency ?? 30000;
-    this._pingTimeout = config.ping?.timeout ?? 10000;
 
     logger.debug(
       `HttpStreamTransport configured with: ${JSON.stringify({
@@ -44,10 +36,6 @@ export class HttpStreamTransport extends AbstractTransport {
         maxMessageSize: config.maxMessageSize,
         auth: config.auth ? true : false,
         cors: config.cors ? true : false,
-        ping: {
-          frequency: this._pingFrequency,
-          timeout: this._pingTimeout,
-        },
       })}`
     );
   }
@@ -97,7 +85,6 @@ export class HttpStreamTransport extends AbstractTransport {
       this._server.listen(this._port, () => {
         logger.info(`HTTP server listening on port ${this._port}, endpoint ${this._endpoint}`);
         this._isRunning = true;
-        this.startPingInterval();
         resolve();
       });
     });
@@ -202,52 +189,10 @@ export class HttpStreamTransport extends AbstractTransport {
     );
   }
 
-  private startPingInterval(): void {
-    if (this._pingFrequency > 0) {
-      logger.debug(
-        `Starting ping interval with frequency ${this._pingFrequency}ms and timeout ${this._pingTimeout}ms`
-      );
-      this._pingInterval = setInterval(() => this.sendPing(), this._pingFrequency);
-    }
-  }
-
-  private async sendPing(): Promise<void> {
-    if (!this._isRunning || Object.keys(this._transports).length === 0) {
-      return;
-    }
-
-    const pingId = `ping-${Date.now()}`;
-    const pingRequest: JSONRPCMessage = {
-      jsonrpc: '2.0' as const,
-      id: pingId,
-      method: 'ping',
-    };
-
-    logger.debug(
-      `Broadcasting ping to ${Object.keys(this._transports).length} sessions: ${JSON.stringify(pingRequest)}`
-    );
-
-    for (const [sessionId, transport] of Object.entries(this._transports)) {
-      try {
-        await transport.send(pingRequest);
-
-        const timeoutId = setTimeout(() => {
-          logger.warn(`Ping timeout for session ${sessionId}`);
-          delete this._transports[sessionId];
-          this._pingTimeouts.delete(pingId);
-        }, this._pingTimeout);
-
-        this._pingTimeouts.set(pingId, timeoutId);
-      } catch (error) {
-        logger.error(`Error sending ping to session ${sessionId}: ${error}`);
-        delete this._transports[sessionId];
-      }
-    }
-  }
-
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this._isRunning) {
-      throw new Error('HttpStreamTransport not running');
+      logger.warn('Attempted to send message, but HTTP transport is not running');
+      return;
     }
 
     const activeSessions = Object.entries(this._transports);
@@ -281,16 +226,6 @@ export class HttpStreamTransport extends AbstractTransport {
     if (!this._isRunning) {
       return;
     }
-
-    if (this._pingInterval) {
-      clearInterval(this._pingInterval);
-      this._pingInterval = undefined;
-    }
-
-    for (const timeout of this._pingTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    this._pingTimeouts.clear();
 
     for (const transport of Object.values(this._transports)) {
       try {
