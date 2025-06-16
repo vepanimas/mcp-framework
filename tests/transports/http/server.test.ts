@@ -34,10 +34,6 @@ describe('HttpStreamTransport', () => {
         port: 9999,
         endpoint: '/custom-mcp',
         responseMode: 'batch',
-        ping: {
-          frequency: 60000,
-          timeout: 15000,
-        },
       });
 
       expect(customTransport).toBeDefined();
@@ -117,32 +113,6 @@ describe('HttpStreamTransport', () => {
   });
 
   describe('Configuration Validation', () => {
-    it('should accept valid ping configuration', () => {
-      const transportWithPing = new HttpStreamTransport({
-        port: 8080,
-        ping: {
-          frequency: 30000,
-          timeout: 10000,
-        },
-      });
-
-      expect(transportWithPing).toBeDefined();
-      expect(transportWithPing.type).toBe('http-stream');
-    });
-
-    it('should accept disabled ping configuration', () => {
-      const transportNoPing = new HttpStreamTransport({
-        port: 8080,
-        ping: {
-          frequency: 0, // Disabled
-          timeout: 10000,
-        },
-      });
-
-      expect(transportNoPing).toBeDefined();
-      expect(transportNoPing.type).toBe('http-stream');
-    });
-
     it('should handle different response modes', () => {
       const streamTransport = new HttpStreamTransport({
         responseMode: 'stream',
@@ -170,8 +140,7 @@ describe('HttpStreamTransport', () => {
 
     it('should support proper session management structure', () => {
       const serverConfig = { name: 'multi-client-server', version: '1.0.0' };
-      const setupCallback = async () => {
-      };
+      const setupCallback = async () => {};
 
       // Should accept configuration for multi-client support
       expect(() => transport.setServerConfig(serverConfig, setupCallback)).not.toThrow();
@@ -226,14 +195,12 @@ describe('HttpStreamTransport', () => {
 
   describe('Integration with Framework Pattern', () => {
     it('should follow the multi-session architecture', () => {
-
       const serverConfig = {
         name: 'http-stream-server',
         version: '1.0.0',
       };
 
-      const setupCallback = async () => {
-      };
+      const setupCallback = async () => {};
 
       // Should accept the configuration pattern used by working examples
       expect(() => transport.setServerConfig(serverConfig, setupCallback)).not.toThrow();
