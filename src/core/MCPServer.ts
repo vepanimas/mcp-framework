@@ -47,14 +47,14 @@ export interface MCPServerConfig {
 
 export type ServerCapabilities = {
   tools?: {
-    listChanged?: true; // Optional: Indicates support for list change notifications
+    listChanged?: true;
   };
   prompts?: {
-    listChanged?: true; // Optional: Indicates support for list change notifications
+    listChanged?: true;
   };
   resources?: {
-    listChanged?: true; // Optional: Indicates support for list change notifications
-    subscribe?: true; // Optional: Indicates support for resource subscriptions
+    listChanged?: true;
+    subscribe?: true;
   };
 };
 
@@ -137,6 +137,54 @@ export class MCPServer {
         };
         logger.debug(`Creating HttpStreamTransport. response mode: ${httpConfig.responseMode}`);
         transport = new HttpStreamTransport(httpConfig);
+
+        const serverConfig = {
+          name: this.serverName,
+          version: this.serverVersion,
+        };
+
+        const setupCallback = async (server: any) => {
+          for (const [name, tool] of this.toolsMap.entries()) {
+            let zodSchema: any;
+            if ((tool as any).schema && typeof (tool as any).schema === 'object') {
+              zodSchema = (tool as any).schema;
+            } else {
+              zodSchema = {};
+            }
+
+            server.tool(name, zodSchema, async (input: any) => {
+              try {
+                logger.debug(`Executing tool ${name} with input: ${JSON.stringify(input)}`);
+                const result = await (tool as any).execute(input);
+
+                if (result && typeof result === 'object' && 'content' in result) {
+                  return result;
+                } else {
+                  return {
+                    content: [
+                      {
+                        type: 'text',
+                        text: typeof result === 'string' ? result : JSON.stringify(result),
+                      },
+                    ],
+                  };
+                }
+              } catch (error) {
+                logger.error(`Tool execution failed for ${name}: ${error}`);
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                  ],
+                };
+              }
+            });
+          }
+        };
+
+        (transport as HttpStreamTransport).setServerConfig(serverConfig, setupCallback);
         break;
       }
       case 'stdio':
@@ -214,7 +262,6 @@ export class MCPServer {
   private setupHandlers(server?: Server) {
     const targetServer = server || this.server;
 
-    // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
     targetServer.setRequestHandler(ListToolsRequestSchema, async (request: any) => {
       logger.debug(`Received ListTools request: ${JSON.stringify(request)}`);
 
@@ -232,7 +279,6 @@ export class MCPServer {
       return response;
     });
 
-    // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
     targetServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       logger.debug(`Tool call request received for: ${request.params.name}`);
       logger.debug(`Tool call arguments: ${JSON.stringify(request.params.arguments)}`);
@@ -269,7 +315,6 @@ export class MCPServer {
         };
       });
 
-      // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
       targetServer.setRequestHandler(GetPromptRequestSchema, async (request: any) => {
         const prompt = this.promptsMap.get(request.params.name);
         if (!prompt) {
@@ -295,7 +340,6 @@ export class MCPServer {
         };
       });
 
-      // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
       targetServer.setRequestHandler(ReadResourceRequestSchema, async (request: any) => {
         const resource = this.resourcesMap.get(request.params.uri);
         if (!resource) {
@@ -321,7 +365,6 @@ export class MCPServer {
         return response;
       });
 
-      // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
       targetServer.setRequestHandler(SubscribeRequestSchema, async (request: any) => {
         const resource = this.resourcesMap.get(request.params.uri);
         if (!resource) {
@@ -336,7 +379,6 @@ export class MCPServer {
         return {};
       });
 
-      // TODO: Replace 'any' with the specific inferred request type from the SDK schema if available
       targetServer.setRequestHandler(UnsubscribeRequestSchema, async (request: any) => {
         const resource = this.resourcesMap.get(request.params.uri);
         if (!resource) {
@@ -410,11 +452,9 @@ export class MCPServer {
       const sdkVersion = this.getSdkVersion();
       logger.info(`Starting MCP server: (Framework: ${frameworkVersion}, SDK: ${sdkVersion})...`);
 
-      // Load all tools, prompts, and resources first
       const tools = await this.toolLoader.loadTools();
       this.toolsMap = new Map(tools.map((tool: ToolProtocol) => [tool.name, tool]));
 
-      // Validate all tools
       for (const tool of tools) {
         if ('validate' in tool && typeof tool.validate === 'function') {
           try {
