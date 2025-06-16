@@ -212,16 +212,6 @@ export class MCPServer {
     return transport;
   }
 
-  private createServerInstance() {
-    const server = new Server(
-      { name: this.serverName, version: this.serverVersion },
-      { capabilities: this.capabilities }
-    );
-
-    this.setupHandlers(server);
-    return server;
-  }
-
   private readPackageJson(): any {
     try {
       const projectRoot = process.cwd();
