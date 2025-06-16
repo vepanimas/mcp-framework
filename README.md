@@ -156,26 +156,26 @@ mcp add resource market-data
 3. **Define your tool schemas with automatic validation:**
    ```typescript
    // tools/DataFetcher.ts
-   import { MCPTool, McpInput } from "mcp-framework";
-   import { z } from "zod";
-   
-   const DataFetcherSchema = z.object({
-     // all fields should have .describe()
-     url: z.string().url().describe("URL to fetch data from"),
-     timeout: z.number().positive().default(5000).describe("Request timeout in milliseconds").optional()
-   });
-   
-   class DataFetcher extends MCPTool {
-     name = "data_fetcher";
-     description = "Fetch data from external APIs";
-     schema = DataFetcherSchema;
-     
-     async execute(input: McpInput<this>) {
-       // Fully typed input with autocomplete support
-       const { url, timeout = 5000 } = input;
-       // ... implementation
-     }
-   }
+   import { MCPTool, MCPInput as AddToolInput } from "mcp-framework";
+  import { z } from "zod";
+
+  const AddToolSchema = z.object({
+  a: z.number().describe("First number to add"),
+  b: z.number().describe("Second number to add"),
+  });
+
+  class AddTool extends MCPTool {
+  name = "add";
+  description = "Add tool description";
+  schema = AddToolSchema;
+
+  async execute(input: AddToolInput<this>) {
+    const result = input.a + input.b;
+    return `Result: ${result}`;
+    }
+  }
+  export default AddTool;
+
    ```
 
 4. **Build with automatic validation:**
