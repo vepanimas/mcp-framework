@@ -3,7 +3,6 @@ import { IncomingMessage, ServerResponse, createServer, Server as HttpServer } f
 import { AbstractTransport } from '../base.js';
 import { JSONRPCMessage, isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { HttpStreamTransportConfig } from './types.js';
 import { logger } from '../../core/Logger.js';
 
@@ -16,9 +15,6 @@ export class HttpStreamTransport extends AbstractTransport {
   private _enableJsonResponse: boolean = false;
 
   private _transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
-
-  private _serverConfig: any;
-  private _serverSetupCallback?: (server: McpServer) => Promise<void>;
 
   constructor(config: HttpStreamTransportConfig = {}) {
     super();
@@ -38,11 +34,6 @@ export class HttpStreamTransport extends AbstractTransport {
         cors: config.cors ? true : false,
       })}`
     );
-  }
-
-  setServerConfig(serverConfig: any, setupCallback: (server: McpServer) => Promise<void>): void {
-    this._serverConfig = serverConfig;
-    this._serverSetupCallback = setupCallback;
   }
 
   async start(): Promise<void> {
@@ -126,17 +117,11 @@ export class HttpStreamTransport extends AbstractTransport {
           }
         };
 
-        if (this._serverSetupCallback && this._serverConfig) {
-          const server = new McpServer(this._serverConfig);
-          await this._serverSetupCallback(server);
-          await server.connect(transport);
-        } else {
-          transport.onmessage = async (message: JSONRPCMessage) => {
-            if (this._onmessage) {
-              await this._onmessage(message);
-            }
-          };
-        }
+        transport.onmessage = async (message: JSONRPCMessage) => {
+          if (this._onmessage) {
+            await this._onmessage(message);
+          }
+        };
 
         await transport.handleRequest(req, res, body);
         return;
