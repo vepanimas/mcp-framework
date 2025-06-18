@@ -41,16 +41,6 @@ describe('HttpStreamTransport', () => {
     });
   });
 
-  describe('Server Configuration', () => {
-    it('should set server configuration and setup callback', () => {
-      const serverConfig = { name: 'test-server', version: '1.0.0' };
-      const setupCallback = async () => {};
-
-      // Should not throw when setting configuration
-      expect(() => transport.setServerConfig(serverConfig, setupCallback)).not.toThrow();
-    });
-  });
-
   describe('Transport Management', () => {
     it('should start and stop successfully', async () => {
       expect(transport.isRunning()).toBe(false);
@@ -138,20 +128,7 @@ describe('HttpStreamTransport', () => {
       expect(transport.isRunning()).toBe(false);
     });
 
-    it('should support proper session management structure', () => {
-      const serverConfig = { name: 'multi-client-server', version: '1.0.0' };
-      const setupCallback = async () => {};
-
-      // Should accept configuration for multi-client support
-      expect(() => transport.setServerConfig(serverConfig, setupCallback)).not.toThrow();
-    });
-
     it('should handle server lifecycle correctly', async () => {
-      // Set up server configuration first
-      const serverConfig = { name: 'test-server', version: '1.0.0' };
-      const setupCallback = async () => {};
-      transport.setServerConfig(serverConfig, setupCallback);
-
       // Start and verify state
       await transport.start();
       expect(transport.isRunning()).toBe(true);
@@ -193,33 +170,32 @@ describe('HttpStreamTransport', () => {
     });
   });
 
-  describe('Integration with Framework Pattern', () => {
-    it('should follow the multi-session architecture', () => {
-      const serverConfig = {
-        name: 'http-stream-server',
-        version: '1.0.0',
-      };
-
-      const setupCallback = async () => {};
-
-      // Should accept the configuration pattern used by working examples
-      expect(() => transport.setServerConfig(serverConfig, setupCallback)).not.toThrow();
-
-      // Should maintain the http-stream transport type
-      expect(transport.type).toBe('http-stream');
-    });
-
-    it('should support the official MCP pattern for session management', () => {
-      // Verify the transport supports the pattern:
-      // 1. Each session gets its own transport instance (handled by our implementation)
-      // 2. Each session gets its own McpServer instance (handled by setServerConfig)
-      // 3. Server connects to transport (handled by our implementation)
-      // 4. Transport stores sessions in a map (our _transports map)
-
+  describe('Unified Transport Architecture', () => {
+    it('should use standard MCP protocol flow like other transports', () => {
+      // HTTP transport now uses the same unified architecture as SSE and stdio
       expect(transport).toBeDefined();
-      expect(typeof transport.setServerConfig).toBe('function');
+      expect(transport.type).toBe('http-stream');
+
+      // Should have standard transport interface methods
       expect(typeof transport.send).toBe('function');
       expect(typeof transport.close).toBe('function');
+      expect(typeof transport.start).toBe('function');
+      expect(typeof transport.isRunning).toBe('function');
+    });
+
+    it('should support message handling through onmessage handler', () => {
+      // HTTP transport now uses standard onmessage handler like other transports
+      let messageReceived: JSONRPCMessage | undefined;
+
+      // Setting onmessage should not throw
+      expect(() => {
+        transport.onmessage = async (message: JSONRPCMessage) => {
+          messageReceived = message;
+        };
+      }).not.toThrow();
+
+      // Verify the transport has the onmessage property in its interface
+      expect('onmessage' in transport).toBe(true);
     });
   });
 });
