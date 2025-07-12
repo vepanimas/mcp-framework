@@ -1,12 +1,20 @@
-export * from './core/MCPServer.js';
-export * from './core/Logger.js';
+export { MCPServer } from './core/ModernMCPServer.js';
+export { z } from 'zod';
 
-export * from './tools/BaseTool.js';
-export * from './resources/BaseResource.js';
-export * from './prompts/BasePrompt.js';
+// Re-export useful SDK types for convenience
+export type { 
+  JSONRPCMessage,
+  Tool,
+  Resource,
+  Prompt,
+  ResourceTemplate
+} from '@modelcontextprotocol/sdk/types.js';
 
-export * from './auth/index.js';
-
-export type { SSETransportConfig } from './transports/sse/types.js';
-export type { HttpStreamTransportConfig } from './transports/http/types.js';
-export { HttpStreamTransport } from './transports/http/server.js';
+// Export transport types
+export type {
+  TransportType,
+  MCPServerConfig,
+  ToolHandler,
+  PromptHandler,
+  ResourceHandler
+} from './core/ModernMCPServer.js';

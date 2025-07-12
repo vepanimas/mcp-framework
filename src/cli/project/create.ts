@@ -1,18 +1,14 @@
-import { spawnSync } from 'child_process';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import prompts from 'prompts';
-import { generateReadme } from '../templates/readme.js';
 import { execa } from 'execa';
 
 export async function createProject(
   name?: string,
-  options?: { http?: boolean; cors?: boolean; port?: number; install?: boolean; example?: boolean }
+  options?: { http?: boolean; port?: number; install?: boolean }
 ) {
   let projectName: string;
-  // Default install and example to true if not specified
   const shouldInstall = options?.install !== false;
-  const shouldCreateExample = options?.example !== false;
 
   if (!name) {
     const response = await prompts([
@@ -43,203 +39,188 @@ export async function createProject(
 
   const projectDir = join(process.cwd(), projectName);
   const srcDir = join(projectDir, 'src');
-  const toolsDir = join(srcDir, 'tools');
 
   try {
     console.log('Creating project structure...');
     await mkdir(projectDir);
     await mkdir(srcDir);
-    await mkdir(toolsDir);
 
+    // Create package.json
     const packageJson = {
       name: projectName,
-      version: '0.0.1',
-      description: `${projectName} MCP server`,
+      version: '1.0.0',
+      description: `MCP server: ${projectName}`,
       type: 'module',
-      bin: {
-        [projectName]: './dist/index.js',
-      },
-      files: ['dist'],
+      main: './dist/index.js',
       scripts: {
-        build: 'tsc && mcp-build',
-        watch: 'tsc --watch',
+        build: 'tsc',
         start: 'node dist/index.js',
+        dev: 'tsc --watch'
       },
       dependencies: {
-        'mcp-framework': '^0.2.2',
+        'mcp-framework': 'latest',
+        zod: '^3.23.8'
       },
       devDependencies: {
-        '@types/node': '^20.11.24',
         typescript: '^5.3.3',
-      },
-      engines: {
-        node: '>=18.19.0',
-      },
+        '@types/node': '^20.17.28'
+      }
     };
 
-    const tsconfig = {
+    await writeFile(
+      join(projectDir, 'package.json'),
+      JSON.stringify(packageJson, null, 2)
+    );
+
+    // Create tsconfig.json
+    const tsConfig = {
       compilerOptions: {
-        target: 'ESNext',
-        module: 'ESNext',
-        moduleResolution: 'node',
+        target: 'ES2022',
+        module: 'Node16',
+        moduleResolution: 'Node16',
         outDir: './dist',
         rootDir: './src',
+        declaration: true,
         strict: true,
         esModuleInterop: true,
         skipLibCheck: true,
         forceConsistentCasingInFileNames: true,
+        resolveJsonModule: true
       },
       include: ['src/**/*'],
-      exclude: ['node_modules'],
+      exclude: ['node_modules', 'dist']
     };
 
-    const gitignore = `node_modules
-dist
-.env
-logs
-.DS_Store
-.idea
-.vscode
+    await writeFile(
+      join(projectDir, 'tsconfig.json'),
+      JSON.stringify(tsConfig, null, 2)
+    );
+
+    // Create main server file
+    const transportConfig = options?.http
+      ? `{ transport: 'http' as const, port: ${options.port || 8080} }`
+      : '{}';
+
+    const serverContent = `import { MCPServer, z } from 'mcp-framework';
+
+const server = new MCPServer({
+  name: '${projectName}',
+  version: '1.0.0',
+  ...${transportConfig}
+});
+
+// Example tool - remove or modify as needed
+server
+  .addTool(
+    'hello',
+    'Say hello to someone',
+    z.object({
+      name: z.string().describe('Name of the person to greet')
+    }),
+    async ({ name }) => ({
+      content: [{ type: 'text', text: \`Hello, \${name}! Welcome to ${projectName}.\` }]
+    })
+  )
+  .addTool(
+    'add',
+    'Add two numbers',
+    z.object({
+      a: z.number().describe('First number'),
+      b: z.number().describe('Second number')
+    }),
+    async ({ a, b }) => ({
+      content: [{ type: 'text', text: \`\${a} + \${b} = \${a + b}\` }]
+    })
+  );
+
+// Start the server
+server.start().catch(console.error);
 `;
-    let indexTs = '';
 
-    if (options?.http) {
-      const port = options.port || 8080;
-      let transportConfig = `\n  transport: {
-    type: "http-stream",
-    options: {
-      port: ${port}`;
+    await writeFile(join(srcDir, 'index.ts'), serverContent);
 
-      if (options.cors) {
-        transportConfig += `,
-      cors: {
-        allowOrigin: "*"
-      }`;
-      }
+    // Create README
+    const readmeContent = `# ${projectName}
 
-      transportConfig += `
-    }
-  }`;
+A Model Context Protocol (MCP) server built with mcp-framework.
 
-      indexTs = `import { MCPServer } from "mcp-framework";
+## Getting Started
 
-const server = new MCPServer({${transportConfig}});
+1. Install dependencies:
+   \`\`\`bash
+   npm install
+   \`\`\`
 
-server.start();`;
-    } else {
-      indexTs = `import { MCPServer } from "mcp-framework";
+2. Build the project:
+   \`\`\`bash
+   npm run build
+   \`\`\`
 
-const server = new MCPServer();
+3. Run the server:
+   \`\`\`bash
+   npm start
+   \`\`\`
 
-server.start();`;
-    }
+## Development
 
-    const exampleToolTs = `import { MCPTool } from "mcp-framework";
-import { z } from "zod";
+- \`npm run dev\` - Watch mode for development
+- \`npm run build\` - Build the project
 
-interface ExampleInput {
-  message: string;
+## Adding Tools
+
+Edit \`src/index.ts\` to add more tools:
+
+\`\`\`typescript
+server
+  .addTool(
+    'tool-name',
+    'Tool description',
+    z.object({
+      param: z.string().describe('Parameter description')
+    }),
+    async ({ param }) => ({
+      content: [{ type: 'text', text: \`Result: \${param}\` }]
+    })
+  );
+\`\`\`
+
+## Transport
+
+${
+  options?.http
+    ? `This server uses HTTP transport on port ${options.port || 8080}.`
+    : 'This server uses stdio transport (default for Claude Desktop).'
 }
+`;
 
-class ExampleTool extends MCPTool<ExampleInput> {
-  name = "example_tool";
-  description = "An example tool that processes messages";
+    await writeFile(join(projectDir, 'README.md'), readmeContent);
 
-  schema = {
-    message: {
-      type: z.string(),
-      description: "Message to process",
-    },
-  };
-
-  async execute(input: ExampleInput) {
-    return \`Processed: \${input.message}\`;
-  }
-}
-
-export default ExampleTool;`;
-
-    const filesToWrite = [
-      writeFile(join(projectDir, 'package.json'), JSON.stringify(packageJson, null, 2)),
-      writeFile(join(projectDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2)),
-      writeFile(join(projectDir, 'README.md'), generateReadme(projectName)),
-      writeFile(join(srcDir, 'index.ts'), indexTs),
-      writeFile(join(projectDir, '.gitignore'), gitignore),
-    ];
-
-    if (shouldCreateExample) {
-      filesToWrite.push(writeFile(join(toolsDir, 'ExampleTool.ts'), exampleToolTs));
-    }
-
-    console.log('Creating project files...');
-    await Promise.all(filesToWrite);
-
-    process.chdir(projectDir);
-
-    console.log('Initializing git repository...');
-    const gitInit = spawnSync('git', ['init'], {
-      stdio: 'inherit',
-      shell: true,
-    });
-
-    if (gitInit.status !== 0) {
-      throw new Error('Failed to initialize git repository');
-    }
+    console.log(`✅ Project ${projectName} created successfully!`);
 
     if (shouldInstall) {
       console.log('Installing dependencies...');
-      const npmInstall = spawnSync('npm', ['install'], {
-        stdio: 'inherit',
-        shell: true,
+      await execa('npm', ['install'], {
+        cwd: projectDir,
+        stdio: 'inherit'
       });
-
-      if (npmInstall.status !== 0) {
-        throw new Error('Failed to install dependencies');
-      }
 
       console.log('Building project...');
-      const tscBuild = await execa('npx', ['tsc'], {
+      await execa('npm', ['run', 'build'], {
         cwd: projectDir,
-        stdio: 'inherit',
+        stdio: 'inherit'
       });
-
-      if (tscBuild.exitCode !== 0) {
-        throw new Error('Failed to build TypeScript');
-      }
-
-      const mcpBuild = await execa('npx', ['mcp-build'], {
-        cwd: projectDir,
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          MCP_SKIP_VALIDATION: 'true',
-        },
-      });
-
-      if (mcpBuild.exitCode !== 0) {
-        throw new Error('Failed to run mcp-build');
-      }
-
-      console.log(`
-Project ${projectName} created and built successfully!
-
-You can now:
-1. cd ${projectName}
-2. Add more tools using:
-   mcp add tool <n>
-    `);
-    } else {
-      console.log(`
-Project ${projectName} created successfully (without dependencies)!
-
-You can now:
-1. cd ${projectName}
-2. Run 'npm install' to install dependencies
-3. Run 'npm run build' to build the project
-4. Add more tools using:
-   mcp add tool <n>
-    `);
     }
+
+    console.log(`
+🎉 Your MCP server is ready!
+
+Next steps:
+  cd ${projectName}
+  ${!shouldInstall ? 'npm install\n  npm run build\n  ' : ''}npm start
+
+The server includes example tools. Edit src/index.ts to customize them.
+`);
+
   } catch (error) {
     console.error('Error creating project:', error);
     process.exit(1);

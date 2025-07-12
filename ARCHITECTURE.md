@@ -1,366 +1,385 @@
-# MCP Framework Architecture
+# MCP Framework v2.0 Architecture
 
-This document provides detailed insights into the implementation and architecture of the MCP Framework.
+This document describes the modernized architecture of the MCP Framework v2.0, which provides a standards-compliant wrapper around the official MCP TypeScript SDK.
 
-## Overview
+## Design Philosophy
 
-The MCP Framework is a sophisticated TypeScript framework for building Model Context Protocol (MCP) servers. It provides auto-discovery, type-safe tool development, multiple transport layers, and comprehensive validation - all while maintaining a simple developer experience.
+### Standards-First Approach
+The v2.0 architecture prioritizes **100% compliance** with the official MCP SDK:
+- Uses `McpServer` class from `@modelcontextprotocol/sdk`
+- Leverages official registration methods (`registerTool()`, `registerPrompt()`, `registerResource()`)
+- Direct transport usage without custom abstraction layers
+- Minimal wrapper that adds value without complexity
 
-## Core Architecture Components
+### Simplicity Over Magic
+- **No auto-discovery**: Explicit registration for predictable behavior
+- **Single file pattern**: All components defined in one place
+- **Direct API**: No hidden abstractions or complex inheritance hierarchies
+- **Immediate feedback**: Errors surface quickly during development
 
-### 1. Auto-Discovery System
+## Core Architecture
 
-The framework's auto-discovery system is built on three key components:
+### MCPServer Class (`src/core/ModernMCPServer.ts`)
 
-#### File Discovery Engine (`src/utils/fileDiscovery.ts`)
-
-**Purpose**: Intelligently traverses the filesystem to find MCP components.
-
-**Key Features**:
-- **Recursive traversal** with pattern matching support
-- **Glob-style exclusion patterns** (`*.test.js`, `BaseTool.js`, etc.)
-- **Smart path resolution**: Checks `dist/` directory first, falls back to module path
-- **Extension filtering** with configurable file types
-- **Performance optimized** with early returns and efficient directory scanning
-
-**Implementation Insight**: The discovery engine doesn't just scan files - it understands development vs production environments and intelligently resolves module paths for both scenarios.
+The `MCPServer` class is a lightweight wrapper around the official SDK's `McpServer`:
 
 ```typescript
-// Example: Smart directory resolution
-const distPath = join(projectRoot, 'dist', subdirectory);
-if (existsSync(distPath)) {
-  return distPath; // Production: use compiled output
-}
-// Development: use source files
-```
-
-#### BaseLoader Pattern (`src/loaders/BaseLoader.ts`)
-
-**Purpose**: Abstract factory pattern for loading and validating components.
-
-**Architecture**:
-- **Template Method Pattern**: Common loading logic with specialized validation
-- **ES Module Support**: Dynamic imports using `pathToFileURL()`
-- **Type Safety**: Validates instances using type guards before registration
-- **Error Handling**: Graceful failure with detailed logging
-
-**Key Loaders**:
-- `ToolLoader`: Validates tools have required methods and properties
-- `PromptLoader`: Validates prompt definitions and message generation
-- `ResourceLoader`: Validates resource URIs and read capabilities
-
-**Implementation Insight**: Each loader handles the complexity of ES module dynamic imports while providing type-safe component instantiation.
-
-### 2. Zod Integration and Schema System
-
-#### Schema to JSON Schema Conversion (`src/tools/BaseTool.ts`)
-
-**Purpose**: Bridge between Zod runtime validation and MCP's JSON Schema requirements.
-
-**Key Implementation**:
-
-```typescript
-private generateSchemaFromZodObject(zodSchema: z.ZodObject<any>): {
-  type: 'object';
-  properties: Record<string, unknown>;
-  required: string[];
-} {
-  const shape = zodSchema.shape;
-  const missingDescriptions: string[] = [];
-
-  Object.entries(shape).forEach(([key, fieldSchema]) => {
-    const fieldInfo = this.extractFieldInfo(fieldSchema as z.ZodType);
-    
-    if (!fieldInfo.jsonSchema.description) {
-      missingDescriptions.push(key);
-    }
-    // ... property generation
-  });
-
-  if (missingDescriptions.length > 0) {
-    throw new Error(`Missing descriptions for fields...`);
-  }
-}
-```
-
-**Advanced Features**:
-- **Modifier Unwrapping**: Recursively handles Optional, Default, Nullable
-- **Constraint Extraction**: Converts Zod constraints to JSON Schema (min/max, patterns, enums)
-- **Nested Object Support**: Handles complex nested schemas
-- **Type Inference**: Automatic TypeScript type generation
-
-#### Type Magic and Inference
-
-**Automatic Type Inference**:
-```typescript
-export type MCPInput<T extends MCPTool<any, any>> = InferSchemaType<T['schema']>;
-```
-
-**Implementation Insight**: This creates a magical developer experience where TypeScript automatically infers input types from Zod schemas, eliminating duplicate type definitions entirely.
-
-#### Multi-Level Validation System
-
-**Four-Stage Validation Pipeline**:
-
-1. **Development-time**: `defineSchema()` helper provides immediate feedback
-2. **Build-time**: `npm run build` validates all tool schemas
-3. **Startup-time**: Server validates during component loading  
-4. **Runtime**: Zod validates actual tool inputs
-
-**Enforcement Strategy**:
-- **Fail Fast**: Development errors caught immediately
-- **Build Prevention**: Invalid tools can't be deployed
-- **Runtime Safety**: Input validation with detailed error messages
-- **Progressive Enhancement**: Better errors in development, graceful handling in production
-
-### 3. MCP Protocol Handling
-
-#### Event-Driven Request Handling (`src/core/MCPServer.ts`)
-
-**Purpose**: Maps MCP protocol requests to component handlers with dynamic capability detection.
-
-**Key Implementation**:
-
-```typescript
-private setupHandlers(server?: Server) {
-  // Tools handling
-  targetServer.setRequestHandler(ListToolsRequestSchema, async (request: any) => {
-    const tools = Array.from(this.toolsMap.values()).map((tool) => tool.toolDefinition);
-    return { tools, nextCursor: undefined };
-  });
-
-  targetServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
-    const tool = this.toolsMap.get(request.params.name);
-    if (!tool) {
-      throw new Error(`Unknown tool: ${request.params.name}`);
-    }
-    return await tool.toolCall(toolRequest);
-  });
-}
-```
-
-**Dynamic Capability Detection**:
-```typescript
-private async detectCapabilities(): Promise<ServerCapabilities> {
-  if (await this.toolLoader.hasTools()) {
-    this.capabilities.tools = {};
-  }
-  if (await this.promptLoader.hasPrompts()) {
-    this.capabilities.prompts = {};
-  }
-  // ... etc
-}
-```
-
-**Implementation Insight**: The server adapts its MCP capabilities based on discovered components, making it truly modular. Only available capabilities are advertised to clients.
-
-#### Component Storage and Lookup
-
-**Efficient Data Structures**:
-- **Maps for O(1) lookup**: `Map<string, ToolProtocol>`
-- **Keyed by component identifier**: Tool name, prompt name, resource URI
-- **Type-safe storage**: Generic Maps with proper typing
-
-### 4. Multi-Transport Architecture
-
-#### Transport Abstraction (`src/transports/base.ts`)
-
-**Purpose**: Unified interface for different communication protocols.
-
-**Common Interface**:
-```typescript
-abstract class AbstractTransport {
-  abstract readonly type: string;
-  abstract start(): Promise<void>;
-  abstract stop(): Promise<void>;
-  onMessage?: (message: JSONRPCMessage) => void;
-  onclose?: () => void;
-  onerror?: (error: Error) => void;
-}
-```
-
-#### SSE Transport Implementation (`src/transports/sse/server.ts`)
-
-**Features**:
-- **Connection Management**: Map of active SSE connections with unique session IDs
-- **Ping/Keepalive**: Built-in connection health monitoring
-- **Authentication Middleware**: Pluggable auth providers (JWT, API Key, Custom)
-- **CORS Support**: Configurable cross-origin resource sharing
-
-**Connection Lifecycle**:
-```typescript
-private _connections: Map<string, { 
-  res: ServerResponse, 
-  intervalId: NodeJS.Timeout 
-}>
-```
-
-#### HTTP Stream Transport (`src/transports/http/server.ts`)
-
-**Features**:
-- **SDK Integration**: Uses official MCP SDK's `StreamableHTTPServerTransport`
-- **Session Management**: Per-session transport instances
-- **Response Modes**: Batch (JSON-RPC) vs Stream (SSE) responses
-- **Request Correlation**: Proper request/response matching
-
-**Implementation Insight**: Each transport handles the complexity of its specific protocol while presenting a unified interface to the MCP server core.
-
-### 5. CLI and Code Generation System
-
-#### Template-Based Generation (`src/cli/project/`)
-
-**Architecture**:
-- **Interactive Prompts**: User-friendly project and component creation
-- **Template System**: Generates working code, not just boilerplate
-- **Validation**: Ensures project structure and naming conventions
-- **Smart Defaults**: Sensible defaults with customization options
-
-**Tool Generation Example** (`src/cli/project/add-tool.ts`):
-```typescript
-const toolContent = `import { MCPTool } from "mcp-framework";
-import { z } from "zod";
-
-class ${className}Tool extends MCPTool<${className}Input> {
-  name = "${toolName}";
-  description = "${className} tool description";
+export class MCPServer {
+  private mcpServer: McpServer;  // Official SDK server
   
-  schema = {
-    message: {
-      type: z.string(),
-      description: "Message to process",
-    },
-  };
-
-  async execute(input: ${className}Input) {
-    return \`Processed: \${input.message}\`;
+  constructor(config: MCPServerConfig) {
+    this.mcpServer = new McpServer({
+      name: config.name || this.getDefaultName(),
+      version: config.version || this.getDefaultVersion()
+    });
   }
-}`;
+}
 ```
 
-**Implementation Insight**: The CLI generates immediately working code with proper imports, TypeScript types, and MCP compliance - not just empty templates.
+#### Key Design Decisions:
 
-## Performance and Optimization Strategies
+1. **Composition over Inheritance**: Wraps the official SDK rather than extending it
+2. **Fluent Interface**: Methods return `this` for chaining
+3. **Minimal Configuration**: Sensible defaults with optional overrides
+4. **Type Safety**: Full TypeScript support with Zod schema integration
 
-### 1. Memory Management
+### Registration Methods
 
-**Efficient Component Storage**:
-- Maps for O(1) component lookup during request handling
-- Lazy loading of components only when directory scanning occurs
-- Minimal memory footprint per client connection
-- Smart caching of capability detection results
+The framework provides three registration methods that map directly to SDK APIs:
 
-### 2. Filesystem Optimization
+#### Tool Registration
+```typescript
+addTool(name: string, description: string, schema: z.ZodType, handler: ToolHandler): this
+```
 
-**Smart Path Resolution**:
-- Priority-based path checking (dist/ first, then source)
-- Caching of resolved module paths to avoid repeated filesystem calls
-- Early returns in directory traversal for performance
-- Efficient exclusion pattern matching
+**Implementation**:
+```typescript
+addTool(name, description, schema, handler) {
+  this.mcpServer.registerTool(name, {
+    title: name,
+    description,
+    inputSchema: schema
+  }, handler);
+  return this;
+}
+```
 
-### 3. Network Optimization
+#### Prompt Registration
+```typescript
+addPrompt(name: string, description: string, schema: z.ZodType, handler: PromptHandler): this
+```
 
-**Transport Efficiency**:
-- Connection pooling for SSE transport
-- Configurable batch timeouts for HTTP streaming
-- Intelligent ping/keepalive intervals
-- Minimal protocol overhead
+#### Resource Registration
+```typescript
+addResource(name: string, template: string, description: string, handler: ResourceHandler): this
+```
+
+### Transport Layer
+
+The transport layer uses official SDK transports directly:
+
+```typescript
+private createTransport() {
+  switch (this.config.transport) {
+    case 'http':
+      return new StreamableHTTPServerTransport({ port: this.config.port! });
+    case 'stdio':
+    default:
+      return new StdioServerTransport();
+  }
+}
+```
+
+**No Custom Abstraction**: Unlike v1.x, there's no custom transport wrapper. This eliminates complexity and ensures compatibility with SDK updates.
+
+## Schema System
+
+### Zod Integration
+
+The framework uses Zod for schema definition and validation:
+
+```typescript
+const schema = z.object({
+  name: z.string().describe('Parameter description'),
+  age: z.number().optional().describe('Optional parameter')
+});
+```
+
+**Type Inference**: TypeScript automatically infers handler input types from Zod schemas, eliminating duplicate type definitions.
+
+### Validation Flow
+
+1. **Schema Definition**: Developer defines Zod schema with `.describe()` calls
+2. **Automatic Validation**: SDK validates inputs against schema
+3. **Type Safety**: TypeScript ensures handler matches schema types
+4. **Runtime Safety**: Zod catches invalid inputs at runtime
+
+## Project Structure
+
+### Minimal File Organization
+
+Modern projects use a **single file pattern**:
+
+```
+my-project/
+├── src/
+│   └── index.ts          # All registrations in one file
+├── package.json          # Minimal dependencies
+├── tsconfig.json         # Standard TypeScript config
+└── README.md            # Project documentation
+```
+
+### Single File Pattern Benefits
+
+1. **Clarity**: All components visible in one place
+2. **Simplicity**: No file discovery or complex module loading
+3. **IDE-Friendly**: Perfect for programmatic code generation
+4. **Debugging**: Easy to understand component relationships
+
+## CLI Architecture
+
+### Project Generation (`src/cli/project/create.ts`)
+
+The CLI generates complete, working projects:
+
+```typescript
+export async function createProject(name?: string, options?: ProjectOptions) {
+  // 1. Create project structure
+  // 2. Generate package.json with minimal dependencies  
+  // 3. Create tsconfig.json with standard settings
+  // 4. Generate src/index.ts with example tools
+  // 5. Install dependencies and build project
+}
+```
+
+**Generated Template**:
+```typescript
+import { MCPServer, z } from 'mcp-framework';
+
+const server = new MCPServer({
+  name: 'project-name',
+  version: '1.0.0'
+});
+
+server
+  .addTool('hello', 'Say hello', schema, handler)
+  .addTool('add', 'Add numbers', schema, handler)
+  .start();
+```
+
+### Build System (`src/cli/framework/build.ts`)
+
+Simplified build process:
+```typescript
+export async function buildFramework() {
+  // Just run TypeScript compiler - no complex validation
+  await execa('npx', ['tsc'], { stdio: 'inherit' });
+}
+```
 
 ## Error Handling Strategy
 
-### 1. Layered Error Handling
+### Fail-Fast Philosophy
 
-**Component Level**:
-- Validation errors with specific field information
-- Descriptive error messages with fix suggestions
-- Graceful degradation when components fail to load
+1. **Configuration Errors**: Invalid config throws immediately
+2. **Schema Errors**: Zod validation fails fast with clear messages
+3. **Transport Errors**: SDK handles connection issues gracefully
+4. **Runtime Errors**: Tools can return error content in responses
 
-**Transport Level**:
-- Connection error recovery
-- Protocol-specific error formatting
-- Client-friendly error responses
+### Error Response Pattern
 
-**Server Level**:
-- Centralized error logging with context
-- Graceful shutdown on critical errors
-- Signal handling for clean termination
-
-### 2. Development vs Production
-
-**Development Mode**:
-- Verbose error messages with stack traces
-- Immediate validation feedback
-- Enhanced debugging information
-
-**Production Mode**:
-- Sanitized error messages for clients
-- Comprehensive logging for operators
-- Graceful error recovery
-
-## Security Considerations
-
-### 1. Input Validation
-
-**Multi-Layer Validation**:
-- Schema validation at component definition time
-- Runtime input validation using Zod
-- Type safety through TypeScript compilation
-- Sanitization of error messages to prevent information leakage
-
-### 2. Authentication Integration
-
-**Pluggable Auth System**:
-- Support for JWT and API Key authentication
-- Custom authentication provider interface
-- Per-endpoint authentication configuration
-- Secure credential handling
-
-### 3. Transport Security
-
-**Protocol Security**:
-- CORS configuration for web clients
-- Request size limiting to prevent DoS
-- Session management for HTTP transports
-- Connection validation and cleanup
-
-## Extension Points
-
-### 1. Custom Transports
-
-Implement `AbstractTransport` to add new communication protocols:
 ```typescript
-class CustomTransport extends AbstractTransport {
-  readonly type = "custom";
-  // Implement required methods
-}
+server.addTool('risky-tool', 'Description', schema, async (input) => {
+  try {
+    const result = await riskyOperation(input);
+    return { content: [{ type: 'text', text: result }] };
+  } catch (error) {
+    return { 
+      content: [{ 
+        type: 'text', 
+        text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      }] 
+    };
+  }
+});
 ```
 
-### 2. Custom Authentication
+## Type System
 
-Implement `AuthProvider` interface for custom authentication:
+### Type Definitions
+
+The framework exports minimal, focused types:
+
 ```typescript
-class CustomAuthProvider implements AuthProvider {
-  async authenticate(req: IncomingMessage): Promise<boolean | AuthResult> {
-    // Custom authentication logic
+export type TransportType = 'stdio' | 'http';
+
+export type ToolHandler = (input: any) => Promise<{
+  content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>
+}>;
+
+export type MCPServerConfig = {
+  name?: string;
+  version?: string;  
+  transport?: TransportType;
+  port?: number;
+};
+```
+
+### SDK Type Re-exports
+
+```typescript
+// Re-export useful SDK types for convenience
+export type { 
+  JSONRPCMessage,
+  Tool,
+  Resource,
+  Prompt,
+  ResourceTemplate
+} from '@modelcontextprotocol/sdk/types.js';
+```
+
+## Dependencies
+
+### Minimal Dependency Tree
+
+**Runtime Dependencies**:
+- `@modelcontextprotocol/sdk` - Official MCP SDK
+- `zod` - Schema validation and type inference
+- `commander` - CLI framework
+- `execa` - Process execution
+- `prompts` - Interactive CLI prompts
+- `find-up` - File discovery for CLI
+- `typescript` - TypeScript compiler
+
+**Removed Dependencies** (from v1.x):
+- `content-type`, `raw-body` - No longer needed without custom transports
+- `jsonwebtoken` - No authentication system
+- Complex validation and loader systems
+
+## Performance Characteristics
+
+### Startup Performance
+
+1. **No File Scanning**: Eliminates filesystem traversal overhead
+2. **Direct Registration**: Components registered immediately  
+3. **Minimal Validation**: Only essential schema validation
+4. **SDK Optimization**: Leverages official SDK performance optimizations
+
+### Runtime Performance
+
+1. **Direct SDK Usage**: No wrapper overhead during operation
+2. **Efficient Transport**: Official transport implementations
+3. **Simple Request Routing**: Minimal indirection in request handling
+
+### Memory Usage
+
+1. **Single File Pattern**: Minimal module loading overhead
+2. **No Component Caching**: Components defined inline, no caching needed
+3. **Lean Object Model**: Simple data structures without complex inheritance
+
+## Migration Strategy from v1.x
+
+### Breaking Changes
+
+The v2.0 represents a **complete architectural rewrite**:
+
+1. **Class-based → Functional**: No more `MCPTool` inheritance
+2. **Auto-discovery → Explicit**: No more file scanning
+3. **Complex → Simple**: Minimal API surface
+4. **Custom → Standard**: Direct SDK usage
+
+### Migration Pattern
+
+**v1.x Pattern**:
+```typescript
+class MyTool extends MCPTool {
+  name = "my-tool";
+  description = "Tool description";
+  schema = z.object({ input: z.string().describe("Input") });
+  
+  async execute(input: { input: string }) {
+    return `Processed: ${input.input}`;
   }
 }
 ```
 
-### 3. Custom Loaders
-
-Extend `BaseLoader` for custom component types:
+**v2.x Pattern**:
 ```typescript
-class CustomLoader extends BaseLoader<CustomComponent> {
-  // Implement validation and instantiation
-}
+server.addTool(
+  "my-tool",
+  "Tool description", 
+  z.object({ input: z.string().describe("Input") }),
+  async ({ input }) => ({
+    content: [{ type: 'text', text: `Processed: ${input}` }]
+  })
+);
 ```
 
-## Conclusion
+## Extensibility
 
-The MCP Framework demonstrates sophisticated software engineering with careful attention to:
+### SDK Access
 
-- **Developer Experience**: Type safety, auto-discovery, and intelligent code generation
-- **Production Readiness**: Performance optimization, error handling, and security
-- **Extensibility**: Clean abstractions and well-defined extension points
-- **Maintainability**: Clear separation of concerns and comprehensive validation
+For advanced use cases, access the underlying SDK server:
 
-The architecture successfully bridges the gap between the complexity of building robust MCP servers and the simplicity developers expect when using the framework.
+```typescript
+const server = new MCPServer(config);
+
+// Access underlying SDK server for advanced operations
+const sdkServer = server.server;
+sdkServer.registerNotificationHandler(/* custom handlers */);
+```
+
+### Custom Handlers
+
+The framework supports all SDK capabilities:
+
+```typescript
+// Standard registration
+server.addTool(name, description, schema, handler);
+
+// Advanced SDK features still available
+server.server.registerNotificationHandler('custom/notification', handler);
+```
+
+## Testing Strategy
+
+### Framework Testing
+
+The framework itself requires minimal testing due to its thin wrapper nature:
+- Configuration validation
+- Registration method behavior  
+- Transport creation logic
+- CLI generation output
+
+### User Project Testing
+
+Generated projects can use standard testing approaches:
+```typescript
+import { MCPServer } from 'mcp-framework';
+
+describe('My MCP Server', () => {
+  it('should register tools correctly', () => {
+    const server = new MCPServer({ name: 'test' });
+    // Test tool registration
+  });
+});
+```
+
+## Future Evolution
+
+### Alignment with SDK
+
+The v2.0 architecture ensures **automatic compatibility** with MCP SDK updates:
+- Direct SDK usage means new features are immediately available
+- Minimal wrapper reduces breaking change surface area
+- Standard patterns ensure long-term compatibility
+
+### Extension Opportunities
+
+Future enhancements can build on the solid foundation:
+- Development tooling (debugging, testing)
+- Advanced transport configurations
+- Deployment and packaging utilities
+- IDE integrations and code generation
+
+The architecture prioritizes **stability** and **standards compliance** over feature proliferation, ensuring the framework remains a reliable foundation for MCP server development.
