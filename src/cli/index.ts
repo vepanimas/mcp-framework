@@ -6,11 +6,16 @@ import { addPrompt } from './project/add-prompt.js';
 import { addResource } from './project/add-resource.js';
 import { buildFramework } from './framework/build.js';
 import { validateCommand } from './commands/validate.js';
+import mcpCommand from './commands/mcp.js';
 
 const program = new Command();
 
 program.name('mcp').description('CLI for managing MCP server projects').version('0.2.2');
 
+// Add WebStorm integration commands
+program.addCommand(mcpCommand);
+
+// Legacy commands
 program.command('build').description('Build the MCP project').action(buildFramework);
 
 program
