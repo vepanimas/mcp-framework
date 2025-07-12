@@ -135,6 +135,79 @@ The framework expects a specific directory structure:
 - `src/` - TypeScript source code
 - `index.ts` - Main server entry point
 
+## Git Workflow and Branching Strategy
+
+**IMPORTANT**: This repository uses a feature branch workflow. Always work on feature branches, never directly on `main`.
+
+### Feature Branch Workflow
+
+1. **Create a feature branch** before starting any work:
+   ```bash
+   git checkout -b feature/descriptive-feature-name
+   ```
+
+2. **Branch naming conventions**:
+   - `feature/new-tool-system` - For new features
+   - `fix/validation-bug` - For bug fixes
+   - `docs/update-readme` - For documentation
+   - `refactor/loader-system` - For refactoring
+
+3. **Development process**:
+   ```bash
+   # Start feature branch
+   git checkout -b feature/my-new-feature
+   
+   # Make changes and commit
+   git add .
+   git commit -m "feat: implement new feature"
+   
+   # Push feature branch
+   git push origin feature/my-new-feature
+   
+   # Create pull request on GitHub for review
+   ```
+
+4. **Never push directly to main**:
+   - All changes must go through pull requests
+   - Feature branches should be merged via GitHub PRs
+   - Delete feature branches after merging
+
+### Requesting Feature Branch Work
+
+When asking Claude Code to implement features, use this template:
+
+```
+Create a feature branch called `feature/[descriptive-name]` and implement [feature description].
+
+Requirements:
+- [List specific requirements]
+- [Any constraints or considerations]
+- [Testing requirements]
+
+When complete:
+- Run tests and lint
+- Commit with conventional commit format
+- Push feature branch
+- Do not merge to main
+```
+
+### Example Feature Request
+
+```
+Create a feature branch called `feature/websocket-transport` and implement WebSocket transport support.
+
+Requirements:
+- Add WebSocket transport class extending AbstractTransport
+- Support both client and server WebSocket connections
+- Include proper error handling and reconnection logic
+- Add configuration options for WebSocket-specific settings
+
+When complete:
+- Run tests and lint
+- Commit with conventional commit format
+- Push feature branch for PR review
+```
+
 ## Testing Configuration
 
 The project uses Jest with ESM support:
