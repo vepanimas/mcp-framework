@@ -1,9 +1,3 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { ResourceTemplate } from '@modelcontextprotocol/sdk/types.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { z } from 'zod';
 
 export type TransportType = 'stdio' | 'http';
@@ -20,106 +14,65 @@ export type PromptHandler = (input: any) => Promise<{ messages: Array<{ role: st
 export type ResourceHandler = (uri: string) => Promise<{ contents: Array<{ type: string; text?: string; data?: string; mimeType?: string }> }>;
 
 /**
- * Modern MCP Server using the official SDK patterns
+ * Simplified MCP Server wrapper
+ * This is a minimal implementation that will be used by the generated servers
  */
 export class MCPServer {
-  private mcpServer: McpServer;
   private config: MCPServerConfig;
+  private tools: Map<string, { description: string; schema: z.ZodType; handler: ToolHandler }> = new Map();
 
   constructor(config: MCPServerConfig = {}) {
     this.config = {
-      name: config.name || this.getDefaultName(),
-      version: config.version || this.getDefaultVersion(),
+      name: config.name || 'mcp-server',
+      version: config.version || '1.0.0',
       transport: config.transport || 'stdio',
       port: config.port || 8080
     };
-
-    this.mcpServer = new McpServer({
-      name: this.config.name!,
-      version: this.config.version!
-    });
-  }
-
-  private getDefaultName(): string {
-    try {
-      const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8'));
-      return packageJson.name || 'mcp-server';
-    } catch {
-      return 'mcp-server';
-    }
-  }
-
-  private getDefaultVersion(): string {
-    try {
-      const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8'));
-      return packageJson.version || '1.0.0';
-    } catch {
-      return '1.0.0';
-    }
   }
 
   /**
    * Add a tool with Zod schema validation
    */
   addTool(name: string, description: string, schema: z.ZodType, handler: ToolHandler): this {
-    this.mcpServer.registerTool(name, {
-      title: name,
-      description,
-      inputSchema: schema
-    }, handler);
+    this.tools.set(name, { description, schema, handler });
     return this;
   }
 
   /**
-   * Add a prompt with Zod schema validation
-   */
-  addPrompt(name: string, description: string, schema: z.ZodType, handler: PromptHandler): this {
-    this.mcpServer.registerPrompt(name, schema, handler);
-    return this;
-  }
-
-  /**
-   * Add a resource with URI template
-   */
-  addResource(name: string, template: string, description: string, handler: ResourceHandler): this {
-    this.mcpServer.registerResource(name, new ResourceTemplate(template), {
-      title: name,
-      description
-    }, handler);
-    return this;
-  }
-
-  /**
-   * Start the server with the configured transport
+   * Start the server - placeholder implementation
+   * The actual server implementation will be in the generated code
    */
   async start(): Promise<void> {
-    const transport = this.createTransport();
-    await this.mcpServer.connect(transport);
-  }
-
-  /**
-   * Stop the server
-   */
-  async stop(): Promise<void> {
-    await this.mcpServer.close();
-  }
-
-  private createTransport() {
-    switch (this.config.transport) {
-      case 'http':
-        return new StreamableHTTPServerTransport({
-          port: this.config.port!
-        });
-      case 'stdio':
-      default:
-        return new StdioServerTransport();
+    console.log(`Starting ${this.config.name} v${this.config.version}`);
+    console.log(`Transport: ${this.config.transport}`);
+    console.log(`Tools registered: ${Array.from(this.tools.keys()).join(', ')}`);
+    
+    // This will be replaced with actual MCP SDK implementation in generated code
+    if (this.config.transport === 'stdio') {
+      // Handle stdio transport
+      process.stdin.on('data', (data) => {
+        // Process MCP messages
+        this.handleMessage(data.toString());
+      });
     }
   }
 
-  /**
-   * Get the underlying MCP server instance for advanced usage
-   */
-  get server(): McpServer {
-    return this.mcpServer;
+  private async handleMessage(message: string) {
+    try {
+      const parsed = JSON.parse(message);
+      // Basic message handling - will be enhanced in generated code
+      console.log('Received message:', parsed);
+    } catch (error) {
+      console.error('Failed to parse message:', error);
+    }
+  }
+
+  // Getters for generated code
+  get toolsMap() {
+    return this.tools;
+  }
+
+  get serverConfig() {
+    return this.config;
   }
 }

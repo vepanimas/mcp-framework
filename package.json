@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./codegen": {
+      "types": "./dist/codegen/index.d.ts",
+      "import": "./dist/codegen/index.js"
     }
   },
   "files": [
@@ -45,6 +49,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
     "@types/prompts": "^2.4.9",
+    "chokidar": "^3.5.3",
     "commander": "^12.1.0",
     "execa": "^9.5.2",
     "find-up": "^7.0.0",
