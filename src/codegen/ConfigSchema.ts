@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ServerMode } from './ServerGenerator.js';
 
 /**
  * MCP configuration schema using Zod for validation
@@ -9,76 +8,71 @@ export const mcpConfigSchema = z.object({
    * Project name
    */
   name: z.string().min(1).describe('Project name'),
-  
+
   /**
    * Project version
    */
   version: z.string().min(1).describe('Project version'),
-  
+
   /**
    * Project root directory (absolute path)
    */
   projectRoot: z.string().min(1).describe('Project root directory'),
-  
+
   /**
    * Tools directory (relative to project root)
    */
   toolsDir: z.string().min(1).default('.idea/mcp/ts/tools').describe('Tools directory'),
-  
+
   /**
    * Output directory (relative to project root)
    */
   outputDir: z.string().min(1).default('.idea/mcp/generated').describe('Output directory'),
-  
-  /**
-   * Server generation mode
-   */
-  mode: z.nativeEnum(ServerMode).default(ServerMode.SIMPLE).describe('Server generation mode'),
-  
+
   /**
    * Server name
    */
   serverName: z.string().min(1).default('webstorm-mcp-server').describe('Server name'),
-  
+
   /**
    * Server version
    */
   serverVersion: z.string().min(1).default('1.0.0').describe('Server version'),
-  
+
   /**
    * Transport type
    */
   transport: z.enum(['stdio', 'http']).default('stdio').describe('Transport type'),
-  
+
   /**
    * HTTP port (only used with HTTP transport)
    */
   port: z.number().int().positive().optional().describe('HTTP port'),
-  
+
   /**
    * Whether to skip validation
    */
   skipValidation: z.boolean().default(false).describe('Skip validation'),
-  
+
   /**
    * Whether to skip dependency installation
    */
   skipDependencyInstall: z.boolean().default(false).describe('Skip dependency installation'),
-  
+
   /**
    * Whether to skip compilation
    */
   skipCompilation: z.boolean().default(false).describe('Skip compilation'),
-  
+
   /**
    * Whether to copy tool files to the output directory
    */
   copyToolFiles: z.boolean().default(true).describe('Copy tool files to output directory'),
-  
+
   /**
    * Additional configuration options
    */
-  options: z.record(z.unknown()).optional().describe('Additional configuration options')
+  options: z.record(z.unknown()).optional().describe('Additional configuration options'),
 });
 
 /**
@@ -94,19 +88,18 @@ export const DEFAULT_CONFIG: Partial<MCPConfig> = {
   version: '1.0.0',
   toolsDir: '.idea/mcp/ts/tools',
   outputDir: '.idea/mcp/generated',
-  mode: ServerMode.SIMPLE,
   serverName: 'webstorm-mcp-server',
   serverVersion: '1.0.0',
   transport: 'stdio',
   skipValidation: false,
   skipDependencyInstall: false,
   skipCompilation: false,
-  copyToolFiles: true
+  copyToolFiles: true,
 };
 
 /**
  * Generated project structure
- * 
+ *
  * This defines the structure of the generated project files
  */
 export const PROJECT_STRUCTURE = {
@@ -121,12 +114,9 @@ export const PROJECT_STRUCTURE = {
     /**
      * Example tools to create
      */
-    examples: [
-      'GreetingTool.ts',
-      'ProjectInfoTool.ts'
-    ]
+    examples: ['GreetingTool.ts', 'ProjectInfoTool.ts'],
   },
-  
+
   /**
    * Generated server structure
    */
@@ -138,18 +128,13 @@ export const PROJECT_STRUCTURE = {
     /**
      * Files to generate
      */
-    files: [
-      'base-classes.ts',
-      'server.ts',
-      'package.json',
-      'tsconfig.json'
-    ],
+    files: ['base-classes.ts', 'server.ts', 'package.json', 'tsconfig.json'],
     /**
      * Compiled output directory
      */
-    output: 'dist'
+    output: 'dist',
   },
-  
+
   /**
    * Configuration file
    */
@@ -157,9 +142,9 @@ export const PROJECT_STRUCTURE = {
     /**
      * Configuration file name
      */
-    filename: 'mcp.config.json'
+    filename: 'mcp.config.json',
   },
-  
+
   /**
    * WebStorm integration
    */
@@ -171,13 +156,13 @@ export const PROJECT_STRUCTURE = {
     /**
      * Server executable path (relative to generated directory)
      */
-    serverPath: 'dist/server.js'
-  }
+    serverPath: 'dist/server.js',
+  },
 };
 
 /**
  * Validates an MCP configuration
- * 
+ *
  * @param config Configuration to validate
  * @returns Validated configuration
  * @throws Error if validation fails
@@ -188,7 +173,7 @@ export function validateConfig(config: unknown): MCPConfig {
 
 /**
  * Creates a default configuration with overrides
- * 
+ *
  * @param overrides Configuration overrides
  * @returns Default configuration with overrides
  */
@@ -196,19 +181,19 @@ export function createDefaultConfig(overrides: Partial<MCPConfig> = {}): MCPConf
   return {
     ...DEFAULT_CONFIG,
     projectRoot: process.cwd(),
-    ...overrides
+    ...overrides,
   } as MCPConfig;
 }
 
 /**
  * Generates WebStorm integration instructions
- * 
+ *
  * @param config MCP configuration
  * @returns WebStorm integration instructions
  */
 export function generateWebStormInstructions(config: MCPConfig): string {
   const serverPath = `${config.outputDir}/${PROJECT_STRUCTURE.webstorm.serverPath}`;
-  
+
   return `
 WebStorm Integration Instructions:
 ---------------------------------
@@ -229,7 +214,7 @@ node ${serverPath}
 
 /**
  * Generates a README file for the generated project
- * 
+ *
  * @param config MCP configuration
  * @returns README content
  */
@@ -278,10 +263,8 @@ ${generateWebStormInstructions(config).trim()}
 
 The project configuration is stored in \`${PROJECT_STRUCTURE.config.filename}\`.
 
-## Server Mode
+## Server Implementation
 
-The server is currently using the ${config.mode === ServerMode.SIMPLE ? 'simple JSON-RPC' : 'official MCP SDK'} implementation.
-
-${config.mode === ServerMode.SIMPLE ? 'To migrate to the official MCP SDK implementation, run:\n\n```\nmcp migrate-to-sdk\n```' : ''}
+The server uses the official MCP SDK implementation for WebStorm integration.
 `;
 }

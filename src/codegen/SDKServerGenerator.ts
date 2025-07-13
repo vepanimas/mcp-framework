@@ -35,14 +35,15 @@ export interface GenerationResult {
 
 /**
  * Generates a standalone MCP server from TypeScript tool definitions
+ * using the official MCP SDK
  */
-export class ServerGenerator {
+export class SDKServerGenerator {
   private options: ServerGeneratorOptions;
   private errors: string[] = [];
   private generatedFiles: string[] = [];
 
   /**
-   * Creates a new ServerGenerator instance
+   * Creates a new SDKServerGenerator instance
    *
    * @param options Server generator options
    */
@@ -270,22 +271,7 @@ export type ToolInput<T extends SDKTool> = z.infer<T['schema']>;
     // Generate tool instances
     const toolInstances = tools.map((tool) => `new ${tool.className}()`).join(',\n  ');
 
-    // Generate SDK server content
-    const serverContent = this.generateServer(toolImports, toolInstances);
-
-    await fs.writeFile(filePath, serverContent, 'utf8');
-    this.generatedFiles.push(filePath);
-  }
-
-  /**
-   * Generates the server content using the MCP SDK
-   *
-   * @param toolImports Tool import statements
-   * @param toolInstances Tool instance creation
-   * @returns Server content
-   */
-  private generateServer(toolImports: string, toolInstances: string): string {
-    return `#!/usr/bin/env node
+    const serverContent = `#!/usr/bin/env node
 import { Server, Tool, McpError, ErrorCode } from '@modelcontextprotocol/sdk';
 import {
   CallToolRequestSchema,
@@ -408,6 +394,9 @@ class SDKServer {
 const server = new SDKServer();
 server.start();
 `;
+
+    await fs.writeFile(filePath, serverContent, 'utf8');
+    this.generatedFiles.push(filePath);
   }
 
   /**
@@ -415,13 +404,6 @@ server.start();
    */
   private async generatePackageJson(): Promise<void> {
     const filePath = path.join(this.options.outputDir, 'package.json');
-
-    const dependencies: Record<string, string> = {
-      zod: '^3.23.8',
-    };
-
-    // Always add SDK dependency
-    dependencies['@modelcontextprotocol/sdk'] = '^1.15.1';
 
     const content = JSON.stringify(
       {
@@ -434,7 +416,10 @@ server.start();
           build: 'tsc',
           start: 'node dist/server.js',
         },
-        dependencies,
+        dependencies: {
+          '@modelcontextprotocol/sdk': '^1.15.1',
+          zod: '^3.23.8',
+        },
       },
       null,
       2
