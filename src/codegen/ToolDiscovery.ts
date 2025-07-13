@@ -231,8 +231,8 @@ export class ToolDiscovery {
   }> {
     const result: Array<{ name: string; toolName: string; description: string }> = [];
     
-    // Visit each node in the source file
-    function visit(node: ts.Node) {
+    // Visit each node in the source file - use arrow function to preserve 'this' context
+    const visit = (node: ts.Node) => {
       // Look for class declarations
       if (ts.isClassDeclaration(node) && node.name) {
         const className = node.name.text;
@@ -262,7 +262,7 @@ export class ToolDiscovery {
       }
       
       ts.forEachChild(node, visit);
-    }
+    };
     
     /**
      * Checks if a class extends MCPTool

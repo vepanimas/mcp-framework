@@ -56,7 +56,9 @@
     "@modelcontextprotocol/sdk": "^1.11.0"
   },
   "dependencies": {
+    "@types/chokidar": "^1.7.5",
     "@types/prompts": "^2.4.9",
+    "chokidar": "^4.0.3",
     "commander": "^12.1.0",
     "content-type": "^1.0.5",
     "execa": "^9.5.2",
@@ -69,10 +71,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
-    "@types/content-type": "^1.1.8",
+    "@types/content-type": "^1.1.9",
     "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^20.17.28",
+    "@types/raw-body": "^2.1.4",
     "@typescript-eslint/eslint-plugin": "^8.28.0",
     "@typescript-eslint/parser": "^8.28.0",
     "eslint": "^9.23.0",

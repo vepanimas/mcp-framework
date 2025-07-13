@@ -170,12 +170,12 @@ export abstract class MCPTool {
           }
           
           // Try to unwrap
-          if (
-            currentField instanceof z.ZodOptional ||
-            currentField instanceof z.ZodDefault ||
-            currentField instanceof z.ZodNullable
-          ) {
-            currentField = currentField.unwrap ? currentField.unwrap() : currentField._def?.innerType;
+          if (currentField instanceof z.ZodOptional) {
+            currentField = currentField.unwrap();
+          } else if (currentField instanceof z.ZodDefault) {
+            currentField = currentField._def.innerType;
+          } else if (currentField instanceof z.ZodNullable) {
+            currentField = currentField.unwrap();
           } else {
             break;
           }

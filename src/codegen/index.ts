@@ -68,6 +68,12 @@ export {
   generateReadme
 } from './ConfigSchema.js';
 
+// Import types for use in this file
+import { MCPConfig } from './ConfigSchema.js';
+import { BuildConfig, BuildResult } from './BuildPipeline.js';
+import { WatchOptions } from './WatchService.js';
+import { ValidationResult } from './ToolValidator.js';
+
 /**
  * Initialize a new WebStorm MCP project
  * 

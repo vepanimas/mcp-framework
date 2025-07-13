@@ -96,9 +96,9 @@ export class WatchService {
     
     // Handle file events
     this.watcher
-      .on('add', path => this.handleFileChange('add', path))
-      .on('change', path => this.handleFileChange('change', path))
-      .on('unlink', path => this.handleFileChange('unlink', path));
+      .on('add', (path: string) => this.handleFileChange('add', path))
+      .on('change', (path: string) => this.handleFileChange('change', path))
+      .on('unlink', (path: string) => this.handleFileChange('unlink', path));
     
     console.log('👀 Watching for changes (press Ctrl+C to stop)');
   }
