@@ -1,7 +1,7 @@
-import { IncomingMessage } from "node:http";
-import jwt, { Algorithm } from "jsonwebtoken";
-import { AuthProvider, AuthResult, DEFAULT_AUTH_ERROR } from "../types.js";
-import { logger } from "../../core/Logger.js";
+import { IncomingMessage } from 'node:http';
+import jwt, { Algorithm } from 'jsonwebtoken';
+import { AuthProvider, AuthResult, DEFAULT_AUTH_ERROR } from '../types.js';
+import { logger } from '../../core/Logger.js';
 
 /**
  * Configuration options for JWT authentication
@@ -39,39 +39,39 @@ export class JWTAuthProvider implements AuthProvider {
 
   constructor(config: JWTConfig) {
     this.config = {
-      algorithms: ["HS256"],
-      headerName: "Authorization",
+      algorithms: ['HS256'],
+      headerName: 'Authorization',
       requireBearer: true,
-      ...config
+      ...config,
     };
 
     if (!this.config.secret) {
-      throw new Error("JWT secret is required");
+      throw new Error('JWT secret is required');
     }
   }
 
   async authenticate(req: IncomingMessage): Promise<boolean | AuthResult> {
     const authHeader = req.headers[this.config.headerName.toLowerCase()];
-    
-    if (!authHeader || typeof authHeader !== "string") {
+
+    if (!authHeader || typeof authHeader !== 'string') {
       return false;
     }
 
     let token = authHeader;
     if (this.config.requireBearer) {
-      if (!authHeader.startsWith("Bearer ")) {
+      if (!authHeader.startsWith('Bearer ')) {
         return false;
       }
-      token = authHeader.split(" ")[1];
+      token = authHeader.split(' ')[1];
     }
 
     try {
       const decoded = jwt.verify(token, this.config.secret, {
-        algorithms: this.config.algorithms
+        algorithms: this.config.algorithms,
       });
 
       return {
-        data: typeof decoded === "object" ? decoded : { sub: decoded }
+        data: typeof decoded === 'object' ? decoded : { sub: decoded },
       };
     } catch (error) {
       logger.debug(`JWT verification failed: ${(error as Error).message}`);
@@ -82,7 +82,7 @@ export class JWTAuthProvider implements AuthProvider {
   getAuthError() {
     return {
       ...DEFAULT_AUTH_ERROR,
-      message: "Invalid or expired JWT token"
+      message: 'Invalid or expired JWT token',
     };
   }
 }

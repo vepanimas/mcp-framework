@@ -1,4 +1,4 @@
-import { AuthConfig } from "../../auth/types.js";
+import { AuthConfig } from '../../auth/types.js';
 
 /**
  * CORS configuration options for SSE transport
@@ -81,7 +81,9 @@ export interface SSETransportConfig {
 /**
  * Internal configuration type with required fields except headers
  */
-export type SSETransportConfigInternal = Required<Omit<SSETransportConfig, 'headers' | 'auth' | 'cors'>> & {
+export type SSETransportConfigInternal = Required<
+  Omit<SSETransportConfig, 'headers' | 'auth' | 'cors'>
+> & {
   headers?: Record<string, string>;
   auth?: AuthConfig;
   cors?: CORSConfig;
@@ -91,11 +93,11 @@ export type SSETransportConfigInternal = Required<Omit<SSETransportConfig, 'head
  * Default CORS configuration
  */
 export const DEFAULT_CORS_CONFIG: CORSConfig = {
-  allowOrigin: "*",
-  allowMethods: "GET, POST, DELETE, OPTIONS",
-  allowHeaders: "Content-Type, Accept, Authorization, x-api-key, Mcp-Session-Id, Last-Event-ID",
-  exposeHeaders: "Content-Type, Authorization, x-api-key, Mcp-Session-Id",
-  maxAge: "86400"
+  allowOrigin: '*',
+  allowMethods: 'GET, POST, DELETE, OPTIONS',
+  allowHeaders: 'Content-Type, Accept, Authorization, x-api-key, Mcp-Session-Id, Last-Event-ID',
+  exposeHeaders: 'Content-Type, Authorization, x-api-key, Mcp-Session-Id',
+  maxAge: '86400',
 };
 
 /**
@@ -103,7 +105,7 @@ export const DEFAULT_CORS_CONFIG: CORSConfig = {
  */
 export const DEFAULT_SSE_CONFIG: SSETransportConfigInternal = {
   port: 8080,
-  endpoint: "/sse",
-  messageEndpoint: "/messages",
-  maxMessageSize: "4mb"
+  endpoint: '/sse',
+  messageEndpoint: '/messages',
+  maxMessageSize: '4mb',
 };

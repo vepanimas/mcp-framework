@@ -1,14 +1,14 @@
-import { StdioServerTransport as SDKStdioTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { BaseTransport } from "../base.js";
-import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { StdioServerTransport as SDKStdioTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { BaseTransport } from '../base.js';
+import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   ImageTransportOptions,
   DEFAULT_IMAGE_OPTIONS,
   hasImageContent,
   prepareImageForTransport,
-  ImageContent
-} from "../utils/image-handler.js";
-import { logger } from "../../core/Logger.js";
+  ImageContent,
+} from '../utils/image-handler.js';
+import { logger } from '../../core/Logger.js';
 
 type ExtendedJSONRPCMessage = JSONRPCMessage & {
   result?: {
@@ -21,7 +21,7 @@ type ExtendedJSONRPCMessage = JSONRPCMessage & {
  * StdioServerTransport
  */
 export class StdioServerTransport implements BaseTransport {
-  readonly type = "stdio";
+  readonly type = 'stdio';
   private transport: SDKStdioTransport;
   private running: boolean = false;
   private imageOptions: ImageTransportOptions;
@@ -30,7 +30,7 @@ export class StdioServerTransport implements BaseTransport {
     this.transport = new SDKStdioTransport();
     this.imageOptions = {
       ...DEFAULT_IMAGE_OPTIONS,
-      ...imageOptions
+      ...imageOptions,
     };
   }
 
@@ -56,19 +56,21 @@ export class StdioServerTransport implements BaseTransport {
       return message;
     }
 
-    const processedContent = message.result.content.map((item: ImageContent | { type: string; [key: string]: unknown }) => {
-      if (item.type === 'image') {
-        return prepareImageForTransport(item as ImageContent, this.imageOptions);
+    const processedContent = message.result.content.map(
+      (item: ImageContent | { type: string; [key: string]: unknown }) => {
+        if (item.type === 'image') {
+          return prepareImageForTransport(item as ImageContent, this.imageOptions);
+        }
+        return item;
       }
-      return item;
-    });
+    );
 
     return {
       ...message,
       result: {
         ...message.result,
-        content: processedContent
-      }
+        content: processedContent,
+      },
     };
   }
 

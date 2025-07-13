@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Configuration options for image transport
@@ -13,9 +13,9 @@ export interface ImageTransportOptions {
  * Schema for image content validation
  */
 export const ImageContentSchema = z.object({
-  type: z.literal("image"),
+  type: z.literal('image'),
   data: z.string(),
-  mimeType: z.string()
+  mimeType: z.string(),
 });
 
 export type ImageContent = z.infer<typeof ImageContentSchema>;
@@ -26,19 +26,24 @@ export type ImageContent = z.infer<typeof ImageContentSchema>;
 export const DEFAULT_IMAGE_OPTIONS: ImageTransportOptions = {
   maxSize: 5 * 1024 * 1024, // 5MB
   allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  compressionQuality: 0.8
+  compressionQuality: 0.8,
 };
 
 /**
  * Validates image content against transport options
  */
-export function validateImageTransport(content: ImageContent, options: ImageTransportOptions = DEFAULT_IMAGE_OPTIONS): void {
+export function validateImageTransport(
+  content: ImageContent,
+  options: ImageTransportOptions = DEFAULT_IMAGE_OPTIONS
+): void {
   // Validate schema
   ImageContentSchema.parse(content);
 
   // Validate MIME type
   if (!options.allowedMimeTypes.includes(content.mimeType)) {
-    throw new Error(`Unsupported image type: ${content.mimeType}. Allowed types: ${options.allowedMimeTypes.join(', ')}`);
+    throw new Error(
+      `Unsupported image type: ${content.mimeType}. Allowed types: ${options.allowedMimeTypes.join(', ')}`
+    );
   }
 
   // Validate base64 format
@@ -49,7 +54,9 @@ export function validateImageTransport(content: ImageContent, options: ImageTran
   // Validate size
   const sizeInBytes = Buffer.from(content.data, 'base64').length;
   if (sizeInBytes > options.maxSize) {
-    throw new Error(`Image size ${sizeInBytes} bytes exceeds maximum allowed size of ${options.maxSize} bytes`);
+    throw new Error(
+      `Image size ${sizeInBytes} bytes exceeds maximum allowed size of ${options.maxSize} bytes`
+    );
   }
 }
 
@@ -57,9 +64,12 @@ export function validateImageTransport(content: ImageContent, options: ImageTran
  * Prepares image content for transport
  * This function can be extended to handle compression, format conversion, etc.
  */
-export function prepareImageForTransport(content: ImageContent, options: ImageTransportOptions = DEFAULT_IMAGE_OPTIONS): ImageContent {
+export function prepareImageForTransport(
+  content: ImageContent,
+  options: ImageTransportOptions = DEFAULT_IMAGE_OPTIONS
+): ImageContent {
   validateImageTransport(content, options);
-  
+
   // For now, we just return the validated content
   // Future: implement compression, format conversion, etc.
   return content;
@@ -105,6 +115,7 @@ export function hasImageContent(message: unknown): message is MessageWithImage {
   }
 
   const msg = message as MessageWithImage;
-  return Array.isArray(msg.result?.content) &&
-    msg.result.content.some(item => item.type === 'image');
+  return (
+    Array.isArray(msg.result?.content) && msg.result.content.some((item) => item.type === 'image')
+  );
 }

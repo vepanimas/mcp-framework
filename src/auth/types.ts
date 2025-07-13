@@ -1,4 +1,4 @@
-import { IncomingMessage } from "node:http";
+import { IncomingMessage } from 'node:http';
 
 /**
  * Result of successful authentication
@@ -59,5 +59,5 @@ export interface AuthConfig {
  */
 export const DEFAULT_AUTH_ERROR = {
   status: 401,
-  message: "Unauthorized"
+  message: 'Unauthorized',
 };

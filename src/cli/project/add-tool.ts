@@ -1,8 +1,8 @@
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import prompts from "prompts";
-import { validateMCPProject } from "../utils/validate-project.js";
-import { toPascalCase } from "../utils/string-utils.js";
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import prompts from 'prompts';
+import { validateMCPProject } from '../utils/validate-project.js';
+import { toPascalCase } from '../utils/string-utils.js';
 
 export async function addTool(name?: string) {
   await validateMCPProject();
@@ -11,18 +11,18 @@ export async function addTool(name?: string) {
   if (!toolName) {
     const response = await prompts([
       {
-        type: "text",
-        name: "name",
-        message: "What is the name of your tool?",
+        type: 'text',
+        name: 'name',
+        message: 'What is the name of your tool?',
         validate: (value: string) =>
           /^[a-z0-9-]+$/.test(value)
             ? true
-            : "Tool name can only contain lowercase letters, numbers, and hyphens",
+            : 'Tool name can only contain lowercase letters, numbers, and hyphens',
       },
     ]);
 
     if (!response.name) {
-      console.log("Tool creation cancelled");
+      console.log('Tool creation cancelled');
       process.exit(1);
     }
 
@@ -30,12 +30,12 @@ export async function addTool(name?: string) {
   }
 
   if (!toolName) {
-    throw new Error("Tool name is required");
+    throw new Error('Tool name is required');
   }
 
   const className = toPascalCase(toolName);
   const fileName = `${className}Tool.ts`;
-  const toolsDir = join(process.cwd(), "src/tools");
+  const toolsDir = join(process.cwd(), 'src/tools');
 
   try {
     await mkdir(toolsDir, { recursive: true });
@@ -67,11 +67,9 @@ export default ${className}Tool;`;
 
     await writeFile(join(toolsDir, fileName), toolContent);
 
-    console.log(
-      `Tool ${toolName} created successfully at src/tools/${fileName}`
-    );
+    console.log(`Tool ${toolName} created successfully at src/tools/${fileName}`);
   } catch (error) {
-    console.error("Error creating tool:", error);
+    console.error('Error creating tool:', error);
     process.exit(1);
   }
 }

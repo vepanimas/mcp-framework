@@ -1,6 +1,6 @@
-import { createWriteStream, WriteStream } from "fs";
-import { join } from "path";
-import { mkdir } from "fs/promises";
+import { createWriteStream, WriteStream } from 'fs';
+import { join } from 'path';
+import { mkdir } from 'fs/promises';
 
 export class Logger {
   private static instance: Logger;
@@ -10,24 +10,24 @@ export class Logger {
 
   private constructor() {
     this.logToFile = process.env.MCP_ENABLE_FILE_LOGGING === 'true';
-    
+
     if (this.logToFile) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const logDir = process.env.MCP_LOG_DIRECTORY || "logs";
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const logDir = process.env.MCP_LOG_DIRECTORY || 'logs';
 
       this.initFileLogging(logDir, timestamp);
     }
 
-    process.on("exit", () => this.close());
-    process.on("SIGINT", () => this.close());
-    process.on("SIGTERM", () => this.close());
+    process.on('exit', () => this.close());
+    process.on('SIGINT', () => this.close());
+    process.on('SIGTERM', () => this.close());
   }
 
   private async initFileLogging(logDir: string, timestamp: string): Promise<void> {
     try {
       await mkdir(logDir, { recursive: true });
       this.logFilePath = join(logDir, `mcp-server-${timestamp}.log`);
-      this.logStream = createWriteStream(this.logFilePath, { flags: "a" });
+      this.logStream = createWriteStream(this.logFilePath, { flags: 'a' });
       this.info(`File logging enabled, writing to: ${this.logFilePath}`);
     } catch (err) {
       process.stderr.write(`Failed to initialize file logging: ${err}\n`);
@@ -51,7 +51,7 @@ export class Logger {
   }
 
   public info(message: string): void {
-    const formattedMessage = this.formatMessage("INFO", message);
+    const formattedMessage = this.formatMessage('INFO', message);
     if (this.logToFile && this.logStream) {
       this.logStream.write(formattedMessage);
     }
@@ -63,7 +63,7 @@ export class Logger {
   }
 
   public error(message: string): void {
-    const formattedMessage = this.formatMessage("ERROR", message);
+    const formattedMessage = this.formatMessage('ERROR', message);
     if (this.logToFile && this.logStream) {
       this.logStream.write(formattedMessage);
     }
@@ -71,7 +71,7 @@ export class Logger {
   }
 
   public warn(message: string): void {
-    const formattedMessage = this.formatMessage("WARN", message);
+    const formattedMessage = this.formatMessage('WARN', message);
     if (this.logToFile && this.logStream) {
       this.logStream.write(formattedMessage);
     }
@@ -79,7 +79,7 @@ export class Logger {
   }
 
   public debug(message: string): void {
-    const formattedMessage = this.formatMessage("DEBUG", message);
+    const formattedMessage = this.formatMessage('DEBUG', message);
     if (this.logToFile && this.logStream) {
       this.logStream.write(formattedMessage);
     }

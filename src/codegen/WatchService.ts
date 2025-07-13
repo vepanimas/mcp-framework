@@ -26,10 +26,10 @@ export class WatchService {
   private buildTimer: NodeJS.Timeout | null = null;
   private isBuilding = false;
   private pendingBuild = false;
-  
+
   /**
    * Creates a new WatchService instance
-   * 
+   *
    * @param options Watch options
    */
   constructor(options: WatchOptions) {
@@ -39,70 +39,70 @@ export class WatchService {
       watchSubdirectories: options.watchSubdirectories !== false,
       // Set default options for faster rebuilds
       skipDependencyInstall: options.skipDependencyInstall !== false,
-      skipCompilation: options.skipCompilation !== false
+      skipCompilation: options.skipCompilation !== false,
     };
-    
+
     this.buildPipeline = new BuildPipeline(this.options);
   }
-  
+
   /**
    * Starts watching for changes
    */
   async start(): Promise<void> {
     const toolsDir = path.resolve(this.options.projectRoot, this.options.toolsDir);
-    
+
     console.log(`🔍 Watching for changes in ${toolsDir}...`);
-    
+
     // Set up signal handlers for graceful shutdown
     this.setupSignalHandlers();
-    
+
     // Run initial build
     try {
       console.log('🔨 Running initial build...');
       const result = await this.buildPipeline.build();
-      
+
       if (result.success) {
         console.log('✅ Initial build completed successfully');
       } else {
         console.error('❌ Initial build failed');
       }
-      
+
       if (this.options.onBuildComplete) {
         this.options.onBuildComplete(result);
       }
     } catch (error) {
       console.error('❌ Initial build failed with an unexpected error:');
       console.error(error instanceof Error ? error.message : String(error));
-      
+
       if (this.options.onError) {
         this.options.onError(error instanceof Error ? error : new Error(String(error)));
       }
     }
-    
+
     // Start watching for changes
     const watchPattern = this.options.watchSubdirectories
       ? path.join(toolsDir, '**', '*.ts')
       : path.join(toolsDir, '*.ts');
-    
+
     this.watcher = chokidar.watch(watchPattern, {
       ignored: /(^|[/\\])\..|node_modules|dist/,
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
         stabilityThreshold: 300,
-        pollInterval: 100
-      }
+        pollInterval: 100,
+      },
     });
-    
+
     // Handle file events
     this.watcher
       .on('add', (path: string) => this.handleFileChange('add', path))
       .on('change', (path: string) => this.handleFileChange('change', path))
       .on('unlink', (path: string) => this.handleFileChange('unlink', path));
-    
+
     console.log('👀 Watching for changes (press Ctrl+C to stop)');
   }
-  
+
   /**
    * Stops watching for changes
    */
@@ -111,35 +111,37 @@ export class WatchService {
       await this.watcher.close();
       this.watcher = null;
     }
-    
+
     if (this.buildTimer) {
       clearTimeout(this.buildTimer);
       this.buildTimer = null;
     }
-    
+
     console.log('👋 Stopped watching for changes');
   }
-  
+
   /**
    * Handles file changes
-   * 
+   *
    * @param event File event type
    * @param filePath File path
    */
   private handleFileChange(event: 'add' | 'change' | 'unlink', filePath: string): void {
     const relativePath = path.relative(this.options.projectRoot, filePath);
-    console.log(`📝 ${event === 'add' ? 'Added' : event === 'change' ? 'Changed' : 'Removed'}: ${relativePath}`);
-    
+    console.log(
+      `📝 ${event === 'add' ? 'Added' : event === 'change' ? 'Changed' : 'Removed'}: ${relativePath}`
+    );
+
     // Debounce rebuild
     if (this.buildTimer) {
       clearTimeout(this.buildTimer);
     }
-    
+
     this.buildTimer = setTimeout(() => {
       this.debouncedRebuild();
     }, this.options.debounceTime);
   }
-  
+
   /**
    * Rebuilds the project after debounce
    */
@@ -149,44 +151,44 @@ export class WatchService {
       this.pendingBuild = true;
       return;
     }
-    
+
     this.isBuilding = true;
     this.pendingBuild = false;
-    
+
     try {
       console.log('🔨 Rebuilding...');
       const startTime = Date.now();
-      
+
       const result = await this.buildPipeline.build();
-      
+
       const duration = Date.now() - startTime;
-      
+
       if (result.success) {
         console.log(`✅ Rebuild completed successfully in ${duration}ms`);
       } else {
         console.error(`❌ Rebuild failed after ${duration}ms`);
       }
-      
+
       if (this.options.onBuildComplete) {
         this.options.onBuildComplete(result);
       }
     } catch (error) {
       console.error('❌ Rebuild failed with an unexpected error:');
       console.error(error instanceof Error ? error.message : String(error));
-      
+
       if (this.options.onError) {
         this.options.onError(error instanceof Error ? error : new Error(String(error)));
       }
     } finally {
       this.isBuilding = false;
-      
+
       // If a build was requested while we were building, start another one
       if (this.pendingBuild) {
         this.debouncedRebuild();
       }
     }
   }
-  
+
   /**
    * Sets up signal handlers for graceful shutdown
    */
@@ -196,11 +198,11 @@ export class WatchService {
       await this.stop();
       process.exit(0);
     };
-    
+
     // Handle Ctrl+C and other termination signals
     process.on('SIGINT', () => handleSignal('SIGINT'));
     process.on('SIGTERM', () => handleSignal('SIGTERM'));
-    
+
     // Handle uncaught exceptions
     process.on('uncaughtException', async (error) => {
       console.error('❌ Uncaught exception:');
@@ -213,7 +215,7 @@ export class WatchService {
 
 /**
  * Starts watching for changes in the specified directory
- * 
+ *
  * @param options Watch options
  * @returns Promise resolving to the watch service
  */

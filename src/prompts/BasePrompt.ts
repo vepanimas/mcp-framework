@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export type PromptArgumentSchema<T> = {
   [K in keyof T]: {
@@ -9,7 +9,7 @@ export type PromptArgumentSchema<T> = {
 };
 
 export type PromptArguments<T extends PromptArgumentSchema<any>> = {
-  [K in keyof T]: z.infer<T[K]["type"]>;
+  [K in keyof T]: z.infer<T[K]['type']>;
 };
 
 export interface PromptProtocol {
@@ -40,9 +40,7 @@ export interface PromptProtocol {
   >;
 }
 
-export abstract class MCPPrompt<TArgs extends Record<string, any> = {}>
-  implements PromptProtocol
-{
+export abstract class MCPPrompt<TArgs extends Record<string, any> = {}> implements PromptProtocol {
   abstract name: string;
   abstract description: string;
   protected abstract schema: PromptArgumentSchema<TArgs>;
@@ -76,9 +74,7 @@ export abstract class MCPPrompt<TArgs extends Record<string, any> = {}>
 
   async getMessages(args: Record<string, unknown> = {}) {
     const zodSchema = z.object(
-      Object.fromEntries(
-        Object.entries(this.schema).map(([key, schema]) => [key, schema.type])
-      )
+      Object.fromEntries(Object.entries(this.schema).map(([key, schema]) => [key, schema.type]))
     );
 
     const validatedArgs = (await zodSchema.parse(args)) as TArgs;

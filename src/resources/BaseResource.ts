@@ -48,11 +48,11 @@ export abstract class MCPResource implements ResourceProtocol {
   abstract read(): Promise<ResourceContent[]>;
 
   async subscribe?(): Promise<void> {
-    throw new Error("Subscription not implemented for this resource");
+    throw new Error('Subscription not implemented for this resource');
   }
 
   async unsubscribe?(): Promise<void> {
-    throw new Error("Unsubscription not implemented for this resource");
+    throw new Error('Unsubscription not implemented for this resource');
   }
 
   protected async fetch<T>(url: string, init?: RequestInit): Promise<T> {

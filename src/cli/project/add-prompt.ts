@@ -1,8 +1,8 @@
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import prompts from "prompts";
-import { toPascalCase } from "../utils/string-utils.js";
-import { validateMCPProject } from "../utils/validate-project.js";
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import prompts from 'prompts';
+import { toPascalCase } from '../utils/string-utils.js';
+import { validateMCPProject } from '../utils/validate-project.js';
 
 export async function addPrompt(name?: string) {
   await validateMCPProject();
@@ -11,18 +11,18 @@ export async function addPrompt(name?: string) {
   if (!promptName) {
     const response = await prompts([
       {
-        type: "text",
-        name: "name",
-        message: "What is the name of your prompt?",
+        type: 'text',
+        name: 'name',
+        message: 'What is the name of your prompt?',
         validate: (value: string) =>
           /^[a-z0-9-]+$/.test(value)
             ? true
-            : "Prompt name can only contain lowercase letters, numbers, and hyphens",
+            : 'Prompt name can only contain lowercase letters, numbers, and hyphens',
       },
     ]);
 
     if (!response.name) {
-      console.log("Prompt creation cancelled");
+      console.log('Prompt creation cancelled');
       process.exit(1);
     }
 
@@ -30,12 +30,12 @@ export async function addPrompt(name?: string) {
   }
 
   if (!promptName) {
-    throw new Error("Prompt name is required");
+    throw new Error('Prompt name is required');
   }
 
   const className = toPascalCase(promptName);
   const fileName = `${className}Prompt.ts`;
-  const promptsDir = join(process.cwd(), "src/prompts");
+  const promptsDir = join(process.cwd(), 'src/prompts');
 
   try {
     await mkdir(promptsDir, { recursive: true });
@@ -76,11 +76,9 @@ export default ${className}Prompt;`;
 
     await writeFile(join(promptsDir, fileName), promptContent);
 
-    console.log(
-      `Prompt ${promptName} created successfully at src/prompts/${fileName}`
-    );
+    console.log(`Prompt ${promptName} created successfully at src/prompts/${fileName}`);
   } catch (error) {
-    console.error("Error creating prompt:", error);
+    console.error('Error creating prompt:', error);
     process.exit(1);
   }
 }
